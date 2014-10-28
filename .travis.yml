@@ -1,2 +1,3 @@
-install:
-  - sudo ./bootstrap.sh
+script:
+  - "chmod +x bootstrap.sh"
+  - "sudo ./bootstrap.sh"
