@@ -1,15 +1,31 @@
 #!/usr/bin/env bash
 set -eo pipefail
 export DEBIAN_FRONTEND=noninteractive
-export REPO="https://github.com/8iq/wflow-core.git"
+export REPO="https://github.com/8iq/wflow.git"
 export BRANCH=master
 
 command -v apt-get > /dev/null || (echo "This installation script requires apt-get." && exit 1)
 
-#apt-get update
-#apt-get install make git -y
+apt-get update
+apt-get install make git -y
+
+cd ~ && test -d .build || git clone $REPO .build
+cd .build
+
+git fetch origin
+if [[ -n $BRANCH ]]; then
+  git checkout origin/$BRANCH
+elif [[ -n $TAG ]]; then
+  git checkout $TAG
+fi
 
 make install
 
+wflow --help
+wflow-install-plugin --help
+echo "INSTALLED PLUGINS IS:"
+wflow-install-plugin -l
+
 echo
-echo "Almost done! Now use `wflow --help` and `wflow-install-plugin --help`"
+echo "Almost done! Now use 'wflow' and 'wflow-install-plugin'"
+
