@@ -85,11 +85,6 @@ def do_install_plugin(options, installed_plugins, new_plugin_path,
 
 
 def main(argv):
-    copyright = '\nHi! I am `wflow-install-plugin` v {0} \n2014 (c) {1}\n\n' \
-        .format(__version__, __author__)
-
-    print(copyright)
-
     global_options = load_configs(__file__)
 
     directory_for_storing_plugins = global_options.SCRIPT_PLUGIN_PATH
