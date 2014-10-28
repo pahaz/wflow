@@ -1,0 +1,158 @@
+#!/usr/bin/env python3
+# coding=utf-8
+from __future__ import unicode_literals, print_function, absolute_import, \
+    generators, with_statement, nested_scopes, division
+import os
+import stat
+import subprocess
+import sys
+import argparse
+import shutil
+
+from wutil.parser import load_configs
+
+__author__ = 'pahaz'
+__version__ = '1.0'
+INSTALL_SCRIPT_FILE_NAME = 'install'
+
+
+class InstallError(Exception):
+    pass
+
+
+def is_root_access():
+    # Windows not support `geteuid`
+    return os.geteuid() == 0
+
+
+def set_executable(file_):
+    st = os.stat(file_)
+    os.chmod(file_, st.st_mode | stat.S_IEXEC)
+
+
+def execute(file_, env):
+    return subprocess.call(file_, shell=True, env=env)
+
+
+def do_install_plugin(options, installed_plugins, new_plugin_path,
+                      force_install):
+    plugin_path = options.SCRIPT_PLUGIN_PATH
+    venv_path = options.SCRIPT_VENV_PATH
+
+    plugin_name = os.path.basename(new_plugin_path)
+    plugin_new_store_path = os.path.join(plugin_path, plugin_name)
+    is_plugin_self_dir = os.path.exists(new_plugin_path) and \
+                         os.path.exists(plugin_new_store_path) and \
+                         os.path.samefile(new_plugin_path,
+                                          plugin_new_store_path)
+    is_plugin_with_same_name_exists = plugin_name in installed_plugins
+    if is_plugin_with_same_name_exists and not force_install:
+        sys.stderr.write("warning: plugin `{0}` already installed "
+                         "(use `{1} {0} --force` if you want reinstall it)\n"
+                         .format(plugin_name, sys.argv[0]))
+        return
+
+    print("    ----> Installing: {0}".format(new_plugin_path))
+
+    install_file = os.path.join(new_plugin_path, INSTALL_SCRIPT_FILE_NAME)
+    if os.path.exists(install_file):
+        print("    ----> Run: {0}".format(install_file))
+        set_executable(install_file)
+
+        # Windows problem
+        venv_activate_path = os.path.join(venv_path, 'bin', 'activate')
+        if not os.path.exists(venv_activate_path):
+            venv_activate_path = None
+
+        prefix = '. {0} && '.format(venv_activate_path) \
+            if venv_activate_path else ''
+        ret = execute(prefix + install_file, options)
+        if ret != 0:
+            raise InstallError("error: install {1} return "
+                               "{0} != 0".format(ret, install_file))
+
+    if is_plugin_with_same_name_exists and not is_plugin_self_dir:
+        print("    ----> Cleaning: {0}".format(plugin_new_store_path))
+        shutil.rmtree(plugin_new_store_path)
+
+    if not is_plugin_self_dir:
+        print("    ----> Copy plugin: {0} -> {1}".format(
+            new_plugin_path,
+            plugin_new_store_path))
+        shutil.copytree(new_plugin_path, plugin_new_store_path)
+
+    print("    ----> Done")
+
+
+def main(argv):
+    copyright = '\nHi! I am `wflow-install-plugin` v {0} \n2014 (c) {1}\n\n' \
+        .format(__version__, __author__)
+
+    print(copyright)
+
+    global_options = load_configs(__file__)
+
+    directory_for_storing_plugins = global_options.SCRIPT_PLUGIN_PATH
+    directory_for_storing_data = global_options.SCRIPT_DATA_PATH
+    directory_for_storing_venv = global_options.SCRIPT_VENV_PATH
+    owner_username = global_options.SCRIPT_USER_NAME
+
+    parser = argparse.ArgumentParser(description="Plugin install tool")
+    parser.add_argument('-l', '--print-list-installed-plugins',
+                        action='store_true')
+    parser.add_argument('-f', '--force', action='store_true',
+                        help="Force install plugins if they exists")
+    parser.add_argument('plugins', nargs="*", metavar="plugin",
+                        help="Plugin directory")
+
+    options = parser.parse_args(argv)
+
+    installed_plugins = []
+
+    new_plugins = options.plugins
+    force_install = options.force
+    do_print_installed_plugins = options.print_list_installed_plugins
+
+    for new_plugin in os.listdir(directory_for_storing_plugins):
+        _path = os.path.normpath(os.path.join(directory_for_storing_plugins,
+                                              new_plugin))
+        if os.path.isdir(_path):
+            installed_plugins.append(new_plugin)
+
+    if do_print_installed_plugins:
+        print('\n'.join(installed_plugins))
+        return 0
+
+    if not new_plugins:
+        parser.print_usage()
+        sys.stderr.write("error: no plugins for installing\n")
+        return 2
+
+    if not is_root_access():
+        sys.stderr.write("error: installing required root access "
+                         "(use: `sudo {0}`)\n"
+                         .format(' '.join(sys.argv[:])))
+        return 4
+
+    for new_plugin in new_plugins:
+        new_plugin_path = os.path.normpath(new_plugin)
+        if not os.path.exists(new_plugin_path):
+            sys.stderr.write("warning: plugin {0} not exists (skip)\n"
+                             .format(new_plugin_path))
+            continue
+        if not os.path.isdir(new_plugin_path):
+            sys.stderr.write("warning: path {0} is not a directory (skip)\n"
+                             .format(new_plugin_path))
+            continue
+        try:
+            do_install_plugin(global_options,
+                              installed_plugins,
+                              new_plugin_path,
+                              force_install)
+        except InstallError as e:
+            sys.stderr.write(str(e) + '\n')
+            return 1
+
+
+if __name__ == "__main__":
+    sys.exit(main(sys.argv[1:]))
