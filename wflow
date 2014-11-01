@@ -5,10 +5,11 @@ from __future__ import unicode_literals, print_function, absolute_import, \
 import sys
 
 from wshell.core import Core
+from wshell.manager import Manager
 from wutil.parser import load_configs
 
 __author__ = 'pahaz'
-__version__ = '1.0'
+__version__ = '1.1'
 
 
 def puts(s):
@@ -32,7 +33,8 @@ def main(argv):
     directory_for_storing_venv = options.SCRIPT_VENV_PATH
     owner_username = options.SCRIPT_USER_NAME
 
-    app = WflowCore(directory_for_storing_plugins,
+    cm = Manager(directory_for_storing_plugins)
+    app = WflowCore(cm,
                     copyright=copyright,
                     description=description,
                     version=__version__)

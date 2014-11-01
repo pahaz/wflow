@@ -12,7 +12,7 @@ import shutil
 from wutil.parser import load_configs
 
 __author__ = 'pahaz'
-__version__ = '1.0'
+__version__ = '1.1'
 INSTALL_SCRIPT_FILE_NAME = 'install'
 
 
@@ -52,11 +52,11 @@ def do_install_plugin(options, installed_plugins, new_plugin_path,
                          .format(plugin_name, sys.argv[0]))
         return
 
-    print("    ----> Installing: {0}".format(new_plugin_path))
+    print("    ----> installing: {0}".format(new_plugin_path))
 
     install_file = os.path.join(new_plugin_path, INSTALL_SCRIPT_FILE_NAME)
     if os.path.exists(install_file):
-        print("    ----> Run: {0}".format(install_file))
+        print("    ----> run: {0}".format(install_file))
         set_executable(install_file)
 
         # Windows problem
@@ -66,22 +66,23 @@ def do_install_plugin(options, installed_plugins, new_plugin_path,
 
         prefix = '. {0} && '.format(venv_activate_path) \
             if venv_activate_path else ''
-        ret = execute(prefix + install_file, options)
+        cmd = prefix + 'cd {0} && ./install'.format(new_plugin_path)
+        ret = execute(cmd, options)
         if ret != 0:
             raise InstallError("error: install {1} return "
                                "{0} != 0".format(ret, install_file))
 
     if is_plugin_with_same_name_exists and not is_plugin_self_dir:
-        print("    ----> Cleaning: {0}".format(plugin_new_store_path))
+        print("    ----> cleaning: {0}".format(plugin_new_store_path))
         shutil.rmtree(plugin_new_store_path)
 
     if not is_plugin_self_dir:
-        print("    ----> Copy plugin: {0} -> {1}".format(
+        print("    ----> copy plugin: {0} -> {1}".format(
             new_plugin_path,
             plugin_new_store_path))
         shutil.copytree(new_plugin_path, plugin_new_store_path)
 
-    print("    ----> Done")
+    print("    ----> done")
 
 
 def main(argv):
@@ -96,9 +97,9 @@ def main(argv):
     parser.add_argument('-l', '--print-list-installed-plugins',
                         action='store_true')
     parser.add_argument('-f', '--force', action='store_true',
-                        help="Force install plugins if they exists")
+                        help="force install plugins if they exists")
     parser.add_argument('plugins', nargs="*", metavar="plugin",
-                        help="Plugin directory")
+                        help="plugin directory")
 
     options = parser.parse_args(argv)
 

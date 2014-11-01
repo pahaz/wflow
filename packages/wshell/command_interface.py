@@ -17,17 +17,27 @@ class Command(object):
         self.app_args = app_args
         return
 
+    @classmethod
+    def get_name(cls):
+        """Return the command name. Use for command executing.
+        """
+        name = cls.__name__.lower()
+        if name.endswith('command'):
+            name = name[:-7]
+        return name
+
     def get_description(self):
         """Return the command description.
         """
         return inspect.getdoc(self.__class__) or ''
 
-    def get_parser(self, prog_name):
+    def get_parser(self, full_command_name):
         """Return an :class:`argparse.ArgumentParser`.
+        :param full_command_name: full command name
         """
         parser = argparse.ArgumentParser(
             description=self.get_description(),
-            prog=prog_name,
+            prog=full_command_name,
         )
         return parser
 

@@ -1,0 +1,60 @@
+#!/usr/bin/env python3
+# coding=utf-8
+from __future__ import unicode_literals, print_function, absolute_import, \
+    generators, with_statement, nested_scopes, division
+import argparse
+import sys
+
+from wshell.manager import Manager
+from wutil.parser import load_configs
+
+__author__ = 'pahaz'
+__version__ = '1.0'
+
+
+def detect_type(str_value):
+    try:
+        v = int(str_value)
+    except ValueError:
+        try:
+            v = float(str_value)
+        except ValueError:
+            v = str_value
+
+    return v
+
+
+def main(argv):
+    global_options = load_configs(__file__, suppress_open_error=True,
+                                  suppress_attribute_error=True)
+
+    directory_for_storing_plugins = global_options.SCRIPT_PLUGIN_PATH or \
+                                    'plugins'
+    directory_for_storing_data = global_options.SCRIPT_DATA_PATH
+    directory_for_storing_venv = global_options.SCRIPT_VENV_PATH
+    owner_username = global_options.SCRIPT_USER_NAME
+
+    class StoreNameValuePair(argparse.Action):
+        def __call__(self, parser, namespace, values, option_string=None):
+            # print(namespace, values)
+            dict_ = {}
+            for value in values:
+                n, v = value.split('=')
+                dict_[n] = detect_type(v)
+            setattr(namespace, self.dest, dict_)
+
+    parser = argparse.ArgumentParser(description="Trigger event tool")
+    parser.add_argument("name", help="event name")
+    parser.add_argument("args", nargs="*", action=StoreNameValuePair,
+                        help="key=value pair (ex: AAA=\"a a a\" B=2 C=1.2)")
+    args = parser.parse_args(argv)
+    cm = Manager(directory_for_storing_plugins)
+    print("Trigger event '{0}':".format(args.name),
+          ', '.join(map(lambda v: "{0}={1}".format(v[0], v[1]),
+                    args.args.items())))
+    cm.trigger_event(args.name, **args.args)
+    return 0
+
+
+if __name__ == '__main__':
+    sys.exit(main(sys.argv[1:]))

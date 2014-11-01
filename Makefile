@@ -1,7 +1,10 @@
+# settings begin
+
 SCRIPT_VERSION = master
 
 SCRIPT_NAME ?= wflow
 SCRIPT_PLUGIN_INSTALLER_NAME ?= ${SCRIPT_NAME}-install-plugin
+SCRIPT_TRIGGER_EVENT_NAME ?= ${SCRIPT_NAME}-trigger-event
 
 SCRIPT_USER_NAME ?= wflow
 SCRIPT_DATA_PATH ?= /home/${SCRIPT_USER_NAME}
@@ -10,6 +13,9 @@ SCRIPT_PLUGIN_PATH ?= /var/lib/${SCRIPT_NAME}/plugins
 SCRIPT_VENV_PATH ?= /var/lib/${SCRIPT_NAME}/venv
 SCRIPT_PATH ?= /usr/local/bin/${SCRIPT_NAME}
 SCRIPT_PLUGIN_INSTALLER_PATH ?= /usr/local/bin/${SCRIPT_PLUGIN_INSTALLER_NAME}
+SCRIPT_TRIGGER_EVENT_PATH ?= /usr/local/bin/${SCRIPT_TRIGGER_EVENT_NAME}
+
+# settings end
 
 define CONFIG
 [DEFAULT]
@@ -17,6 +23,8 @@ SCRIPT_NAME = ${SCRIPT_NAME}
 SCRIPT_PATH = ${SCRIPT_PATH}
 SCRIPT_PLUGIN_INSTALLER_NAME = ${SCRIPT_PLUGIN_INSTALLER_NAME}
 SCRIPT_PLUGIN_INSTALLER_PATH = ${SCRIPT_PLUGIN_INSTALLER_PATH}
+SCRIPT_TRIGGER_EVENT_NAME = ${SCRIPT_TRIGGER_EVENT_NAME}
+SCRIPT_TRIGGER_EVENT_PATH = ${SCRIPT_TRIGGER_EVENT_PATH}
 SCRIPT_PLUGIN_PATH = ${SCRIPT_PLUGIN_PATH}
 SCRIPT_VENV_PATH = ${SCRIPT_VENV_PATH}
 SCRIPT_USER_NAME = ${SCRIPT_USER_NAME}
@@ -25,7 +33,7 @@ endef
 
 export CONFIG
 
-CURRENT_USER_ID := $(shell id -u)
+CURRENT_USER_ID = $(shell id -u)
 
 .PHONY: all check install create_user create_files install_plugins version count
 
@@ -70,12 +78,12 @@ install_git:
 create_venv: install_python3
 	$(info CREATE VENV ${SCRIPT_VENV_PATH})
 	@[ -f ${SCRIPT_VENV_PATH}/bin/python ] || virtualenv --python=python3 --always-copy ${SCRIPT_VENV_PATH}
-	@[ -f ${SCRIPT_VENV_PATH}/requirements.txt ] || ${SCRIPT_VENV_PATH}/bin/pip install -e packages
+	@[ -f ${SCRIPT_VENV_PATH}/requirements.txt ] || ${SCRIPT_VENV_PATH}/bin/pip install -e packages --download=/tmp/.pip-${SCRIPT_NAME}
 	$(info WRITE INSTALLED PACKAGES ${SCRIPT_VENV_PATH}/requirements.txt)
 	${SCRIPT_VENV_PATH}/bin/pip freeze > ${SCRIPT_VENV_PATH}/requirements.txt
 
 create_user: install_git
-	$(info CREATE USER ${SCRIPT_USER_NAME})
+	$(info CREATE USER ${SCRIPT_USER_NAME} HOME=${SCRIPT_DATA_PATH})
 	@egrep -i "^${SCRIPT_USER_NAME}" /etc/passwd > /dev/null || useradd --home-dir ${SCRIPT_DATA_PATH} --create-home --shell ${SCRIPT_PATH} ${SCRIPT_USER_NAME}
 	@git config --global user.email "${SCRIPT_USER_NAME}@example.com"
 	@git config --global user.name "${SCRIPT_USER_NAME}"
@@ -84,20 +92,25 @@ create_files: create_venv
 	$(info CREATE FILES)
 	cp ${SCRIPT_NAME} ${SCRIPT_PATH}
 	cp ${SCRIPT_PLUGIN_INSTALLER_NAME} ${SCRIPT_PLUGIN_INSTALLER_PATH}
+	cp ${SCRIPT_TRIGGER_EVENT_NAME} ${SCRIPT_TRIGGER_EVENT_PATH}
 	@chmod +x ${SCRIPT_PATH}
 	@chmod +x ${SCRIPT_PLUGIN_INSTALLER_PATH}
+	@chmod +x ${SCRIPT_TRIGGER_EVENT_PATH}
 	mkdir -p ${SCRIPT_PLUGIN_PATH}
 
 create_configs: create_files
 	$(info CREATE CONFIG ${SCRIPT_PATH}.ini AND SYMLINK ${SCRIPT_PLUGIN_INSTALLER_PATH}.ini)
 	@echo "$$CONFIG" > ${SCRIPT_PATH}.ini
 	ln -sf ${SCRIPT_PATH}.ini ${SCRIPT_PLUGIN_INSTALLER_PATH}.ini
+	ln -sf ${SCRIPT_PATH}.ini ${SCRIPT_TRIGGER_EVENT_PATH}.ini
 
 patch_shebang: create_venv
 	$(info PATCH SHEBANG ${SCRIPT_PATH})
 	@sed -i "1 i\#!${SCRIPT_VENV_PATH}/bin/python3" ${SCRIPT_PATH}
 	$(info PATCH SHEBANG ${SCRIPT_PLUGIN_INSTALLER_PATH})
 	@sed -i "1 i\#!${SCRIPT_VENV_PATH}/bin/python3" ${SCRIPT_PLUGIN_INSTALLER_PATH}
+	$(info PATCH SHEBANG ${SCRIPT_TRIGGER_EVENT_PATH})
+	@sed -i "1 i\#!${SCRIPT_VENV_PATH}/bin/python3" ${SCRIPT_TRIGGER_EVENT_PATH}
 
 install_plugins: create_venv create_files create_configs patch_shebang
 	$(info INSTALL PLUGINS from plugins/*)
@@ -121,11 +134,13 @@ count:
 
 clean: check_root
 	$(info CLEAN ${SCRIPT_PLUGIN_PATH} ${SCRIPT_VENV_PATH} ${SCRIPT_PATH} ${SCRIPT_PLUGIN_INSTALLER_PATH})
-	rm -r ${SCRIPT_PLUGIN_PATH}
-	rm -r ${SCRIPT_VENV_PATH}
-	rm ${SCRIPT_PATH}
-	rm ${SCRIPT_PLUGIN_INSTALLER_PATH}
+	rm -rf ${SCRIPT_PLUGIN_PATH}
+	rm -rf ${SCRIPT_VENV_PATH}
+	rm -f ${SCRIPT_PATH} ${SCRIPT_PATH}.ini
+	rm -f ${SCRIPT_PLUGIN_INSTALLER_PATH} ${SCRIPT_PLUGIN_INSTALLER_PATH}.ini
+	rm -f ${SCRIPT_TRIGGER_EVENT_PATH} ${SCRIPT_TRIGGER_EVENT_PATH}.ini
 
 full_clean: check_root clean
-	$(info CLEAN USER ${SCRIPT_USER_NAME})
-	userdel -r -f ${SCRIPT_USER_NAME}
+	$(info CLEAN USER ${SCRIPT_USER_NAME} AND DATA ${SCRIPT_DATA_PATH})
+	rm -rf ${SCRIPT_DATA_PATH}
+	userdel ${SCRIPT_USER_NAME}

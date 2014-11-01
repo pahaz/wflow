@@ -9,23 +9,21 @@ command -v apt-get > /dev/null || (echo "This installation script requires apt-g
 apt-get update
 apt-get install make git -y
 
-cd ~ && test -d .build || git clone $REPO .build
-cd .build
-
-git fetch origin
-if [[ -n $BRANCH ]]; then
-  git checkout origin/$BRANCH
-elif [[ -n $TAG ]]; then
-  git checkout $TAG
-fi
+#cd ~ && test -d .build || git clone $REPO .build
+#cd .build
+#
+#git fetch origin
+#if [[ -n $BRANCH ]]; then
+#  git checkout origin/$BRANCH
+#elif [[ -n $TAG ]]; then
+#  git checkout $TAG
+#fi
 
 make install
 
-wflow --help
-wflow-install-plugin --help
 echo "INSTALLED PLUGINS IS:"
 wflow-install-plugin -l
 
 echo
-echo "Almost done! Now use 'wflow' and 'wflow-install-plugin'"
-
+echo "Almost done! Now use 'wflow', 'wflow-install-plugin' "
+echo "and 'wflow-trigger-event'"
