@@ -125,6 +125,8 @@ count:
 	@cat ${SCRIPT_NAME} | wc -l
 	@echo "Plugin installer lines:"
 	@cat ${SCRIPT_PLUGIN_INSTALLER_NAME} | wc -l
+	@echo "Event trigger lines:"
+	@cat ${SCRIPT_TRIGGER_EVENT_NAME} | wc -l
 	@echo "Plugin lines:"
 	@find plugins -type f | xargs cat | wc -l
 	@echo "Packages lines:"
