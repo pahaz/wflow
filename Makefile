@@ -78,7 +78,7 @@ install_git:
 create_venv: install_python3
 	$(info CREATE VENV ${SCRIPT_VENV_PATH})
 	@[ -f ${SCRIPT_VENV_PATH}/bin/python ] || virtualenv --python=python3 --always-copy ${SCRIPT_VENV_PATH}
-	@[ -f ${SCRIPT_VENV_PATH}/requirements.txt ] || ${SCRIPT_VENV_PATH}/bin/pip install -e packages --download=/tmp/.pip-${SCRIPT_NAME}
+	@[ -f ${SCRIPT_VENV_PATH}/requirements.txt ] || ${SCRIPT_VENV_PATH}/bin/pip install -e packages --download=.pip-${SCRIPT_NAME}
 	$(info WRITE INSTALLED PACKAGES ${SCRIPT_VENV_PATH}/requirements.txt)
 	${SCRIPT_VENV_PATH}/bin/pip freeze > ${SCRIPT_VENV_PATH}/requirements.txt
 

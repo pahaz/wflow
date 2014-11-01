@@ -2,4 +2,4 @@ script:
 #   - "wget -qO- https://raw.github.com/8iq/wflow/bootstrap.sh | sudo bash"
   - "chmod +x bootstrap.sh"
   - "sudo ./bootstrap.sh"
-  - "/var/lib/wenv/venv/bin/python packages/wshell/test"
+  - "/var/lib/wflow/venv/bin/python3 packages/wshell/test"
