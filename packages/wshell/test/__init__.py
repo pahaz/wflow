@@ -33,5 +33,6 @@ class BaseTestCase(unittest.TestCase):
         return z
 
 
-if __name__ == "__main__":
-    unittest.main()
+from .test_command_interface import TestCommandInterface
+from .test_command_manager import TestCommandManager
+from .test_event_manager import TestEventManager

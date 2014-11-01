@@ -12,5 +12,7 @@ You can use this repo as example for creating you custom user login shells.
 
 # How-to setup #
 
-    wget -qO- https://raw.github.com/8iq/wflow/bootstrap.sh | sudo bash
+    git clone github.com/8iq/wflow.git
+    cd wflow
+    cat ./bootstrap.sh | sudo bash
 

@@ -48,5 +48,6 @@ class TestCommandInterface(BaseTestCase):
         z = c.get_parser("somesome.py cmd")
         self.assertEquals(z.description, docs)
 
+
 if __name__ == "__main__":
     unittest.main()

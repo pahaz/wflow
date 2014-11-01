@@ -74,3 +74,7 @@ class TestEventManager(unittest.TestCase):
         em.trigger_event('ev4', z1=2)
 
         self.assertEqual(calls, 2)
+
+
+if __name__ == "__main__":
+    unittest.main()
