@@ -16,3 +16,6 @@ You can use this repo as example for creating you custom user login shells.
     cd wflow
     cat ./bootstrap.sh | sudo bash
 
+# How-to trigger event #
+
+    wflow-trigger-event event-name
