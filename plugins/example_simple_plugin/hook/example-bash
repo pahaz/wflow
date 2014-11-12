@@ -1,0 +1,19 @@
+#!/usr/bin/env bash
+set -eo pipefail; [[ $TRACE ]] && set -x
+
+# cd to plugin root
+PLUGIN_ROOT=`dirname $0`/../
+cd $PLUGIN_ROOT
+
+echo "event example-bash ... "
+echo "event example-bash ... "
+printenv
+echo ...
+echo SCRIPT_NAME=$SCRIPT_NAME
+echo SCRIPT_PLUGIN_INSTALLER_NAME=$SCRIPT_PLUGIN_INSTALLER_NAME
+echo SCRIPT_TRIGGER_EVENT_NAME=$SCRIPT_TRIGGER_EVENT_NAME
+echo SCRIPT_USER_NAME=$SCRIPT_USER_NAME
+echo SCRIPT_DATA_PATH=$SCRIPT_DATA_PATH
+echo SCRIPT_PLUGIN_PATH=$SCRIPT_PLUGIN_PATH
+echo hook ... example ...
+echo hook ... example ...

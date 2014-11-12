@@ -3,16 +3,16 @@
 from __future__ import unicode_literals, print_function, absolute_import, \
     generators, with_statement, nested_scopes, division
 import os
-import stat
-import subprocess
 import sys
 import argparse
 import shutil
 
 from wutil.parser import load_configs
+from wutil.file import set_executable, execute_with_venv_activate
+
 
 __author__ = 'pahaz'
-__version__ = '1.1'
+__version__ = '1.3'
 INSTALL_SCRIPT_FILE_NAME = 'install'
 
 
@@ -23,15 +23,6 @@ class InstallError(Exception):
 def is_root_access():
     # Windows not support `geteuid`
     return os.geteuid() == 0
-
-
-def set_executable(file_):
-    st = os.stat(file_)
-    os.chmod(file_, st.st_mode | stat.S_IEXEC)
-
-
-def execute(file_, env):
-    return subprocess.call(file_, shell=True, env=env)
 
 
 def do_install_plugin(options, installed_plugins, new_plugin_path,
@@ -60,14 +51,10 @@ def do_install_plugin(options, installed_plugins, new_plugin_path,
         set_executable(install_file)
 
         # Windows problem
-        venv_activate_path = os.path.join(venv_path, 'bin', 'activate')
-        if not os.path.exists(venv_activate_path):
-            venv_activate_path = None
-
-        prefix = '. {0} && '.format(venv_activate_path) \
-            if venv_activate_path else ''
-        cmd = prefix + 'cd {0} && ./install'.format(new_plugin_path)
-        ret = execute(cmd, options)
+        ret = execute_with_venv_activate(venv_path,
+                                         './install',
+                                         options,
+                                         cwd=new_plugin_path)
         if ret != 0:
             raise InstallError("error: install {1} return "
                                "{0} != 0".format(ret, install_file))

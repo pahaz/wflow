@@ -9,7 +9,7 @@ from wshell.manager import Manager
 from wutil.parser import load_configs
 
 __author__ = 'pahaz'
-__version__ = '1.0'
+__version__ = '1.2'
 
 
 def detect_type(str_value):
@@ -48,11 +48,16 @@ def main(argv):
     parser.add_argument("args", nargs="*", action=StoreNameValuePair,
                         help="key=value pair (ex: AAA=\"a a a\" B=2 C=1.2)")
     args = parser.parse_args(argv)
-    cm = Manager(directory_for_storing_plugins)
-    print("Trigger event '{0}':".format(args.name),
+    cm = Manager(directory_for_storing_plugins, directory_for_storing_venv,
+                 global_options)
+    print("Trigger event '{0}' ".format(args.name),
           ', '.join(map(lambda v: "{0}={1}".format(v[0], v[1]),
                     args.args.items())))
-    cm.trigger_event(args.name, **args.args)
+    env = dict(global_options.items())
+    results = cm.trigger_event(args.name, env=env, **args.args)
+    for result in results:
+        f, result = result
+        print("Hook {0} return {1}".format(f.__name__, result))
     return 0
 
 

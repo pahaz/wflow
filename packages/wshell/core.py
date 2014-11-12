@@ -30,6 +30,7 @@ class Core(App):
         self.command_manager.add_command(HelpCommand)
         self.command_manager.add_command(CompleteCommand)
         self.event_manager = manager
+        self.env = manager.get_environ()
         self.interactive_app_factory = interactive_app_factory
         self.parser = self.build_option_parser(description, version)
         self.interactive_mode = False
@@ -99,18 +100,20 @@ class Core(App):
 
         name = cmd.get_name()
         event_name = 'pre-' + name
-        rez = self.event_manager.trigger_event(event_name, cmd=cmd)
+        rez = self.event_manager.trigger_event(event_name, cmd=cmd,
+                                               env=self.env)
         if rez:
             self.log.debug('event `{1}` results: {0}'.format(rez, event_name))
 
     def clean_up(self, cmd, result, error):
         self.log.debug('clean_up `{0}`'.format(cmd.get_name()))
         if error:
-            self.log.debug('got an error: %s', error)
+            self.log.debug('got an error: {0}'.format(error))
 
         name = cmd.get_name()
         event_name = 'post-' + name
         rez = self.event_manager.trigger_event(event_name, cmd=cmd,
-                                               result=result, error=error)
+                                               result=result, error=error,
+                                               env=self.env)
         if rez:
             self.log.debug('event {1} results: {0}'.format(rez, event_name))

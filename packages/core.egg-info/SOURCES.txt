@@ -19,11 +19,13 @@ wshell/command/__pycache__
 wshell/command/complete.py
 wshell/command/help.py
 wshell/test/__init__.py
+wshell/test/__main__.py
 wshell/test/__pycache__
 wshell/test/test_command_interface.py
 wshell/test/test_command_manager.py
 wshell/test/test_event_manager.py
 wutil/__init__.py
 wutil/__pycache__
+wutil/file.py
 wutil/parser.py
 wutil/serialize.py

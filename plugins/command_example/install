@@ -1,9 +1,0 @@
-#!/bin/bash
-
-echo "installing ... "
-echo "installing ... "
-echo ${SCRIPT_PLUGIN_PATH}
-echo ${SCRIPT_VENV_PATH}
-echo ${SCRIPT_DATA_PATH}
-echo "installing ... "
-echo "installing ... "

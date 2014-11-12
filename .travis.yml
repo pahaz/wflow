@@ -3,4 +3,5 @@ script:
   - "chmod +x bootstrap.sh"
   - "sudo ./bootstrap.sh"
   - ". /var/lib/wflow/venv/bin/activate && python packages/wshell/test"
+  - "sudo python test.py"
   - "make count"

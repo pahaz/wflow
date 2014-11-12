@@ -1,0 +1,17 @@
+#!/usr/bin/env bash
+set -eo pipefail; [[ $TRACE ]] && set -x
+
+
+echo "install example_simple_plugin ... "
+echo "install example_simple_plugin ... "
+pwd
+printenv
+echo ...
+echo SCRIPT_NAME=$SCRIPT_NAME
+echo SCRIPT_PLUGIN_INSTALLER_NAME=$SCRIPT_PLUGIN_INSTALLER_NAME
+echo SCRIPT_TRIGGER_EVENT_NAME=$SCRIPT_TRIGGER_EVENT_NAME
+echo SCRIPT_USER_NAME=$SCRIPT_USER_NAME
+echo SCRIPT_DATA_PATH=$SCRIPT_DATA_PATH
+echo SCRIPT_PLUGIN_PATH=$SCRIPT_PLUGIN_PATH
+echo "installing example_simple_plugin ... "
+echo "installing example_simple_plugin ... "

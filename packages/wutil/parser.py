@@ -19,6 +19,9 @@ class Config(object):
     def items(self):
         return self.__dict.items()
 
+    def get(self, item):
+        return getattr(self, item)
+
 
 def load_configs(exec_file, check_paths=False,
                  suppress_open_error=False,
@@ -52,7 +55,7 @@ def load_configs(exec_file, check_paths=False,
     # override configs from ENVIRONMENT
     # secure magic names `__`
     config = dict([(k, os.environ.get(k, v)) for k, v in config
-                   if not k.startswith('__')])
+                   if not k.startswith('__') and k.upper() == k])
 
     config = Config(config, suppress_attribute_error=suppress_attribute_error)
 
