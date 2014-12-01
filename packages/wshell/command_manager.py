@@ -1,4 +1,5 @@
-from .command_interface import Command
+import six
+from .command_interface import AbstractCommand
 
 __author__ = 'pahaz'
 
@@ -16,10 +17,10 @@ class CommandManager(object):
         # simple_plugin/__init__.py
 
         import logging
-        from wshell.command_interface import Command
+        from wshell.command_interface import AbstractCommand
 
 
-        class SimpleCommand(Command):
+        class SimpleCommand(AbstractCommand):
             "A simple command that prints a message."
 
             log = logging.getLogger(__name__)
@@ -38,7 +39,7 @@ class CommandManager(object):
         self._commands = {}
 
     def add_command(self, command_class):
-        if not issubclass(command_class, Command):
+        if not issubclass(command_class, AbstractCommand):
             raise TypeError('`command_class` is not a Command subclass')
 
         name = command_class.get_name()
@@ -48,8 +49,8 @@ class CommandManager(object):
         """Given an argument list, find a command and
         return the processor and any remaining arguments.
         """
-        if isinstance(argv, (str, )):
-            raise TypeError('`argv` is not support `str` type')
+        if isinstance(argv, six.string_types):
+            raise TypeError('`argv` is not support string type')
 
         search_args = argv[:]
         name = ''

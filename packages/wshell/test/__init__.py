@@ -1,5 +1,5 @@
 import unittest
-from wshell.command_interface import Command
+from wshell.command_interface import AbstractCommand
 from wshell.manager import CommandManager
 
 __author__ = 'pahaz'
@@ -19,7 +19,7 @@ class BaseTestCase(unittest.TestCase):
         def take_action(self, args):
             pass
 
-        z = type(name, (Command, ), {
+        z = type(name, (AbstractCommand, ), {
             'take_action': take_action,
             '__doc__': docs,
         })

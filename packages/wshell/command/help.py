@@ -1,7 +1,7 @@
 import argparse
 import sys
 import traceback
-from ..command_interface import Command
+from ..command_interface import AbstractCommand
 
 __author__ = 'pahaz'
 
@@ -32,12 +32,12 @@ class HelpAction(argparse.Action):
         sys.exit(0)
 
 
-class HelpCommand(Command):
+class HelpCommand(AbstractCommand):
     """print detailed help for another command
     """
 
-    def get_parser(self, full_command_name):
-        parser = super(HelpCommand, self).get_parser(full_command_name)
+    def get_parser(self, run_command):
+        parser = super(HelpCommand, self).get_parser(run_command)
         parser.add_argument('cmd',
                             nargs='*',
                             help='name of the command',

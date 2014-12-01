@@ -1,25 +1,25 @@
 import logging
 from cliff.complete import CompleteDictionary
 import stevedore
-from ..command_interface import Command
+from ..command_interface import AbstractCommand
 
 __author__ = 'pahaz'
 
 
-class CompleteCommand(Command):
+class CompleteCommand(AbstractCommand):
     """print bash completion command
     """
 
-    log = logging.getLogger(__name__ + '.CompleteCommand')
+    log = logging.getLogger(__name__)
 
-    def __init__(self, app, app_args):
-        super(CompleteCommand, self).__init__(app, app_args)
+    def __init__(self, app, app_parsed_options):
+        super(CompleteCommand, self).__init__(app, app_parsed_options)
         self._formatters = stevedore.ExtensionManager(
             namespace='cliff.formatter.completion',
         )
 
-    def get_parser(self, full_command_name):
-        parser = super(CompleteCommand, self).get_parser(full_command_name)
+    def get_parser(self, run_command):
+        parser = super(CompleteCommand, self).get_parser(run_command)
         parser.add_argument(
             "--name",
             default=None,

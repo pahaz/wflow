@@ -55,6 +55,7 @@ check:
 	@command -v easy_install3 > /dev/null && echo "easy_install3 ... [OK]" || echo "easy_install3 ... [ERROR]"
 	@command -v pip3 > /dev/null && echo "pip3 ... [OK]" || echo "pip3 ... [ERROR]"
 	@command -v virtualenv > /dev/null && echo "virtualenv ... [OK]" || echo "virtualenv ... [ERROR]"
+	@command -v printenv > /dev/null && echo "printenv ... [OK]" || echo "printenv ... [ERROR]"
 
 check_root:
 	$(info CHECK ROOT USER)
@@ -78,7 +79,7 @@ install_git:
 create_venv: install_python3
 	$(info CREATE VENV ${SCRIPT_VENV_PATH})
 	@[ -f ${SCRIPT_VENV_PATH}/bin/python ] || virtualenv --python=python3 --always-copy ${SCRIPT_VENV_PATH}
-	@[ -f ${SCRIPT_VENV_PATH}/requirements.txt ] || ${SCRIPT_VENV_PATH}/bin/pip install -e packages
+	@[ -f ${SCRIPT_VENV_PATH}/requirements.txt ] || ${SCRIPT_VENV_PATH}/bin/pip install ./packages
 	$(info WRITE INSTALLED PACKAGES ${SCRIPT_VENV_PATH}/requirements.txt)
 	${SCRIPT_VENV_PATH}/bin/pip freeze > ${SCRIPT_VENV_PATH}/requirements.txt
 
@@ -121,18 +122,13 @@ version: install_git
 	@git describe --tags > ${SCRIPT_DATA_PATH}/VERSION  2> /dev/null || echo '~${SCRIPT_VERSION} ($(date -uIminutes))' > ${SCRIPT_DATA_PATH}/VERSION
 
 count:
-	@echo "Core lines:"
-	@cat ${SCRIPT_NAME} | wc -l
-	@echo "Plugin installer lines:"
-	@cat ${SCRIPT_PLUGIN_INSTALLER_NAME} | wc -l
-	@echo "Event trigger lines:"
-	@cat ${SCRIPT_TRIGGER_EVENT_NAME} | wc -l
-	@echo "Plugin lines:"
-	@find plugins -type f | xargs cat | wc -l
-	@echo "Packages lines:"
-	@find packages -type f | xargs cat | wc -l
-	@echo "Test lines:"
-	@find tests -type f | xargs cat | wc -l
+	@echo "core - `cat ${SCRIPT_NAME} | wc -l`"
+	@echo "core-install-plugin - `cat ${SCRIPT_PLUGIN_INSTALLER_NAME} | wc -l`"
+	@echo "core-trigger-event - `cat ${SCRIPT_TRIGGER_EVENT_NAME} | wc -l`"
+	@echo "packages/ - `find packages -type f | grep -Ev '*.pyc' | xargs cat | wc -l` (test `find packages -type f | grep -Ev '*.pyc' | grep test/ | xargs cat | wc -l`)"
+	@echo "test.py - `cat test.py | wc -l`"
+	@echo "plugins/ - `find plugins -type f | xargs cat | wc -l`"
+	@echo "tests/ - `find tests -type f | xargs cat | wc -l`"
 
 clean: check_root
 	$(info CLEAN ${SCRIPT_PLUGIN_PATH} ${SCRIPT_VENV_PATH} ${SCRIPT_PATH} ${SCRIPT_PLUGIN_INSTALLER_PATH})
@@ -145,4 +141,11 @@ clean: check_root
 full_clean: check_root clean
 	$(info CLEAN USER ${SCRIPT_USER_NAME} AND DATA ${SCRIPT_DATA_PATH})
 	rm -rf ${SCRIPT_DATA_PATH}
-	userdel ${SCRIPT_USER_NAME}
+	userdel ${SCRIPT_USER_NAME} || echo "user '${SCRIPT_USER_NAME}' not exists"
+
+test_requirements:
+	pip3 install -r test_requirements.txt
+
+test: check_root test_requirements
+	for x in packages/*/test; do . ${SCRIPT_VENV_PATH}/bin/activate && python $$x || exit 2; done
+	python3 test.py

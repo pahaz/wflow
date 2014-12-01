@@ -1,8 +1,8 @@
 import os
 import traceback
+import sys
 
 from six import string_types
-import sys
 
 from .module import is_python_plugin_module
 from .module import load_python_module
@@ -16,7 +16,7 @@ __author__ = 'pahaz'
 
 
 class Manager(CommandManager, EventManager):
-    def __init__(self, plugins_path, venv_path, environ):
+    def __init__(self, plugins_path, venv_path, env):
         if not isinstance(plugins_path, string_types):
             raise TypeError("Invalid plugins path.")
         if not os.path.exists(plugins_path):
@@ -25,12 +25,12 @@ class Manager(CommandManager, EventManager):
         CommandManager.__init__(self)
         EventManager.__init__(self)
         self._venv_path = venv_path
-        self._environ = dict(environ.items())
+        self._env = env
         self._plugins_path = plugins_path
         self._load_commands()
 
-    def get_environ(self):
-        return self._environ.copy()
+    def get_env(self):
+        return self._env
 
     def _load_commands(self):
         base_path = self._plugins_path
@@ -42,7 +42,7 @@ class Manager(CommandManager, EventManager):
                 elif is_simple_plugin_module(path):
                     load_simple_module(path, self,
                                        self._venv_path,
-                                       self._environ)
+                                       self._env)
             except Exception as err:
                 sys.stdout.write('Could not load {0} {1}\n'.format(path, err))
                 traceback.print_exc(file=sys.stdout)

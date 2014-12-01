@@ -7,12 +7,13 @@ import sys
 import argparse
 import shutil
 
-from wutil.parser import load_configs
-from wutil.file import set_executable, execute_with_venv_activate
+from wutil.env import load_env_for_file
+from wutil.file import set_executable
+from wutil.execute import simple_execute
 
 
 __author__ = 'pahaz'
-__version__ = '1.3'
+__version__ = '0.2.1'
 INSTALL_SCRIPT_FILE_NAME = 'install'
 
 
@@ -25,10 +26,10 @@ def is_root_access():
     return os.geteuid() == 0
 
 
-def do_install_plugin(options, installed_plugins, new_plugin_path,
+def do_install_plugin(env, installed_plugins, new_plugin_path,
                       force_install):
-    plugin_path = options.SCRIPT_PLUGIN_PATH
-    venv_path = options.SCRIPT_VENV_PATH
+    plugin_path = env.SCRIPT_PLUGIN_PATH
+    venv_path = env.SCRIPT_VENV_PATH
 
     plugin_name = os.path.basename(new_plugin_path)
     plugin_new_store_path = os.path.join(plugin_path, plugin_name)
@@ -51,10 +52,13 @@ def do_install_plugin(options, installed_plugins, new_plugin_path,
         set_executable(install_file)
 
         # Windows problem
-        ret = execute_with_venv_activate(venv_path,
-                                         './install',
-                                         options,
-                                         cwd=new_plugin_path)
+        venv_activate_path = os.path.join(venv_path, 'bin', 'activate')
+        ret = simple_execute(
+            './install',
+            env=env,
+            init_env_script=venv_activate_path,
+            cwd=new_plugin_path)
+
         if ret != 0:
             raise InstallError("error: install {1} return "
                                "{0} != 0".format(ret, install_file))
@@ -73,12 +77,12 @@ def do_install_plugin(options, installed_plugins, new_plugin_path,
 
 
 def main(argv):
-    global_options = load_configs(__file__)
+    env = load_env_for_file(__file__)
 
-    directory_for_storing_plugins = global_options.SCRIPT_PLUGIN_PATH
-    directory_for_storing_data = global_options.SCRIPT_DATA_PATH
-    directory_for_storing_venv = global_options.SCRIPT_VENV_PATH
-    owner_username = global_options.SCRIPT_USER_NAME
+    directory_for_storing_plugins = env.SCRIPT_PLUGIN_PATH
+    directory_for_storing_data = env.SCRIPT_DATA_PATH
+    directory_for_storing_venv = env.SCRIPT_VENV_PATH
+    owner_username = env.SCRIPT_USER_NAME
 
     parser = argparse.ArgumentParser(description="Plugin install tool")
     parser.add_argument('-l', '--print-list-installed-plugins',
@@ -128,7 +132,7 @@ def main(argv):
                              .format(new_plugin_path))
             continue
         try:
-            do_install_plugin(global_options,
+            do_install_plugin(env,
                               installed_plugins,
                               new_plugin_path,
                               force_install)

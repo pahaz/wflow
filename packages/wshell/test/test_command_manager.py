@@ -1,5 +1,5 @@
 import unittest
-from wshell.command_interface import Command
+from wshell.command_interface import AbstractCommand
 from wshell.test import BaseTestCase
 
 

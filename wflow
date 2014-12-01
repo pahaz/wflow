@@ -6,19 +6,20 @@ import sys
 
 from wshell.core import Core
 from wshell.manager import Manager
-from wutil.parser import load_configs
+from wutil.env import load_env_for_file
 
 __author__ = 'pahaz'
-__version__ = '1.3'
+__version__ = '0.2.0'
 
 
 def puts(s):
-    sys.stderr.write(s + '\n')
+    sys.stderr.write(s)
 
 
 class WflowCore(Core):
     def initialize_app(self, argv):
         puts(self.copyright)
+        super(WflowCore, self).initialize_app(argv)
 
 
 def main(argv):
@@ -26,15 +27,16 @@ def main(argv):
     copyright = '\nHi! I am `wflow` v {0} \n2014 (c) {1}\n\n' \
         .format(__version__, __author__)
 
-    global_options = load_configs(__file__)
+    env = load_env_for_file(__file__)
 
-    directory_for_storing_plugins = global_options.SCRIPT_PLUGIN_PATH
-    directory_for_storing_data = global_options.SCRIPT_DATA_PATH
-    directory_for_storing_venv = global_options.SCRIPT_VENV_PATH
-    owner_username = global_options.SCRIPT_USER_NAME
+    directory_for_storing_plugins = env.SCRIPT_PLUGIN_PATH
+    directory_for_storing_data = env.SCRIPT_DATA_PATH
+    directory_for_storing_venv = env.SCRIPT_VENV_PATH
+    owner_username = env.SCRIPT_USER_NAME
 
-    cm = Manager(directory_for_storing_plugins, directory_for_storing_venv,
-                 global_options)
+    cm = Manager(directory_for_storing_plugins,
+                 directory_for_storing_venv,
+                 env)
     app = WflowCore(cm,
                     copyright=copyright,
                     description=description,

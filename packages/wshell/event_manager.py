@@ -12,7 +12,6 @@ class EventManager(object):
         # simple_plugin/__init__.py
 
         import logging
-        from wshell.command_interface import Command
 
 
         def woow_printer_listener(**kwargs):

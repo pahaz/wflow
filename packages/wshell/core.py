@@ -1,9 +1,12 @@
 import argparse
+import shlex
+
 from cliff.app import App
 
 from .interactive import InteractiveMode
 from .command.complete import CompleteCommand
 from .command.help import HelpCommand, HelpAction
+
 
 __author__ = 'pahaz'
 
@@ -12,13 +15,18 @@ class Core(App):
     """
     Core class is the manager interface.
     """
+    ERROR_RETURN_CODE = 1
+    COMMAND_NOT_FOUND_RETURN_CODE = 2
+
+    DEFAULT_VERBOSE_LEVEL = 2
     CONSOLE_MESSAGE_FORMAT = '%(name)s: %(message)s'
     LOG_FILE_MESSAGE_FORMAT = \
         '[%(asctime)s] %(levelname)-8s %(name)s %(message)s'
 
     log = App.LOG
 
-    def __init__(self, manager,
+    def __init__(self,
+                 manager,
                  copyright='', description='', version='0.0',
                  stdin=None, stdout=None, stderr=None,
                  interactive_app_factory=InteractiveMode):
@@ -26,11 +34,13 @@ class Core(App):
         self.description = description
         self.version = version
         self._set_streams(stdin, stdout, stderr)
+
         self.command_manager = manager
         self.command_manager.add_command(HelpCommand)
         self.command_manager.add_command(CompleteCommand)
         self.event_manager = manager
-        self.env = manager.get_environ()
+        self.env = manager.get_env()
+
         self.interactive_app_factory = interactive_app_factory
         self.parser = self.build_option_parser(description, version)
         self.interactive_mode = False
@@ -85,35 +95,80 @@ class Core(App):
         # -c uses for login shell
         parser.add_argument(
             '-c', '--command',
-            action='store_true',
-            dest='is_command_option_used',
+            nargs='?',
+            action='store',
+            dest='command',
             help="Run command and exit. (deprecated) "
                  "Used for login shell command execution."
         )
         return parser
 
     def initialize_app(self, argv):
-        pass
+        if self.options.command:
+            command = shlex.split(self.options.command)
+            argv[:] = command + argv
 
-    def prepare_to_run_command(self, cmd):
-        self.log.debug('prepare_to_run_command `{0}`'.format(cmd.get_name()))
+        # set interactive after `-c` fix
+        self.interactive_mode = not argv
 
-        name = cmd.get_name()
+    def prepare_to_run_command(self, command):
+        self.log.debug('prepare_to_run_command `{0}`'
+                       .format(command.get_name()))
+
+        name = command.get_name()
         event_name = 'pre-' + name
-        rez = self.event_manager.trigger_event(event_name, cmd=cmd,
+        rez = self.event_manager.trigger_event(event_name, command=command,
                                                env=self.env)
         if rez:
             self.log.debug('event `{1}` results: {0}'.format(rez, event_name))
 
-    def clean_up(self, cmd, result, error):
-        self.log.debug('clean_up `{0}`'.format(cmd.get_name()))
+    def clean_up(self, command, result, error):
+        self.log.debug('clean_up `{0}`'.format(command.get_name()))
         if error:
             self.log.debug('got an error: {0}'.format(error))
 
-        name = cmd.get_name()
+        name = command.get_name()
         event_name = 'post-' + name
-        rez = self.event_manager.trigger_event(event_name, cmd=cmd,
+        rez = self.event_manager.trigger_event(event_name, command=command,
                                                result=result, error=error,
                                                env=self.env)
         if rez:
             self.log.debug('event {1} results: {0}'.format(rez, event_name))
+
+    def run_subcommand(self, argv):
+        try:
+            subcommand = self.command_manager.find_command(argv)
+        except ValueError as e:
+            if self.options.debug:
+                self.LOG.exception(e)
+            else:
+                self.LOG.error(e)
+            return self.COMMAND_NOT_FOUND_RETURN_CODE
+
+        command_factory, command_name, sub_argv = subcommand
+        command = command_factory(self, self.options)
+        result = self.ERROR_RETURN_CODE
+        error = None
+        try:
+            self.prepare_to_run_command(command)
+            full_name = (command_name
+                         if self.interactive_mode
+                         else ' '.join([self.NAME, command_name]))
+            result = command.run(full_name, sub_argv)
+        except Exception as e:
+            error = e
+            msg = "Caught exception: {0}".format(e)
+            if self.options.debug:
+                self.LOG.exception(msg)
+            else:
+                self.LOG.error(msg)
+        finally:
+            try:
+                self.clean_up(command, result, error)
+            except Exception as e:
+                msg = "Could not clean up: {0}".format(e)
+                if self.options.debug:
+                    self.LOG.exception(msg)
+                else:
+                    self.LOG.error(msg)
+        return result

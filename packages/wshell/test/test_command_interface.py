@@ -1,5 +1,5 @@
 import unittest
-from wshell.command_interface import Command
+from wshell.command_interface import AbstractCommand
 from wshell.test import BaseTestCase
 
 
@@ -8,7 +8,7 @@ __author__ = 'pahaz'
 
 class TestCommandInterface(BaseTestCase):
     def test_empty_command(self):
-        class Cmd(Command):
+        class Cmd(AbstractCommand):
             pass
 
         with self.assertRaises(TypeError) as cm:
@@ -46,7 +46,7 @@ class TestCommandInterface(BaseTestCase):
         c = Cmd(None, None)
 
         z = c.get_parser("somesome.py cmd")
-        self.assertEquals(z.description, docs)
+        self.assertEqual(z.description, docs)
 
 
 if __name__ == "__main__":

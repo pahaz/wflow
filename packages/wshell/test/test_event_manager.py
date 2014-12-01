@@ -29,7 +29,6 @@ class TestEventManager(unittest.TestCase):
         em = EventManager()
 
         def r(**kwargs):
-            print('trigged')
             self.assertIn('t1', kwargs)
             self.assertEqual(kwargs['t1'], 7)
             raise AssertionError('Ok')
@@ -55,7 +54,6 @@ class TestEventManager(unittest.TestCase):
 
         @em.listen('ev1')
         def r(**kwargs):
-            print('trigged')
             raise AssertionError('Ok ev1')
 
         with self.assertRaises(AssertionError) as c:

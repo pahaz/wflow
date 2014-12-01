@@ -6,10 +6,10 @@ import argparse
 import sys
 
 from wshell.manager import Manager
-from wutil.parser import load_configs
+from wutil.env import load_env_for_file
 
 __author__ = 'pahaz'
-__version__ = '1.2'
+__version__ = '0.2.0'
 
 
 def detect_type(str_value):
@@ -25,14 +25,12 @@ def detect_type(str_value):
 
 
 def main(argv):
-    global_options = load_configs(__file__, suppress_open_error=True,
-                                  suppress_attribute_error=True)
+    env = load_env_for_file(__file__)
 
-    directory_for_storing_plugins = global_options.SCRIPT_PLUGIN_PATH or \
-                                    'plugins'
-    directory_for_storing_data = global_options.SCRIPT_DATA_PATH
-    directory_for_storing_venv = global_options.SCRIPT_VENV_PATH
-    owner_username = global_options.SCRIPT_USER_NAME
+    directory_for_storing_plugins = env.SCRIPT_PLUGIN_PATH
+    directory_for_storing_data = env.SCRIPT_DATA_PATH
+    directory_for_storing_venv = env.SCRIPT_VENV_PATH
+    owner_username = env.SCRIPT_USER_NAME
 
     class StoreNameValuePair(argparse.Action):
         def __call__(self, parser, namespace, values, option_string=None):
@@ -47,14 +45,13 @@ def main(argv):
     parser.add_argument("name", help="event name")
     parser.add_argument("args", nargs="*", action=StoreNameValuePair,
                         help="key=value pair (ex: AAA=\"a a a\" B=2 C=1.2)")
-    args = parser.parse_args(argv)
+    parsed_args = parser.parse_args(argv)
     cm = Manager(directory_for_storing_plugins, directory_for_storing_venv,
-                 global_options)
-    print("Trigger event '{0}' ".format(args.name),
+                 env)
+    print("Trigger event '{0}' ".format(parsed_args.name),
           ', '.join(map(lambda v: "{0}={1}".format(v[0], v[1]),
-                    args.args.items())))
-    env = dict(global_options.items())
-    results = cm.trigger_event(args.name, env=env, **args.args)
+                        parsed_args.args.items())))
+    results = cm.trigger_event(parsed_args.name, env=env, **parsed_args.args)
     for result in results:
         f, result = result
         print("Hook {0} return {1}".format(f.__name__, result))
