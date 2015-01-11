@@ -60,7 +60,7 @@ def git_push(cwd, remote_repo, password):
                       cwd=cwd)
 
     try:
-        ind = z.expect(['connecting (yes/no)? ', 's password:'],
+        ind = z.expect(['connecting (yes/no)?', 's password:'],
                        timeout=1.0)
         if ind == 0:
             z.sendline('yes')
