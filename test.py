@@ -60,7 +60,7 @@ def git_push(cwd, remote_repo, password):
                       cwd=cwd)
 
     try:
-        ind = z.expect(['connecting (yes/no)?', 's password:'],
+        ind = z.expect(['connecting (yes/no)? ', 's password:'],
                        timeout=1.0)
         if ind == 0:
             z.sendline('yes')
@@ -88,7 +88,7 @@ def git_clone(cwd, remote_repo, password):
                       .format(remote_repo),
                       cwd=cwd)
     try:
-        ind = z.expect(['connecting (yes/no)? ', 's password:'],
+        ind = z.expect(['connecting (yes/no)?', 's password:'],
                        timeout=1.0)
         if ind == 0:
             z.sendline('yes')
@@ -157,7 +157,8 @@ class TestPlugin(unittest.TestCase):
         self.check_environments(z)
         self.check_pwd(SCRIPT_PLUGIN_PATH + '/example_python_plugin', z)
 
-        z = local('wflow printenv')
+        z = local('wflow printenv -v')
+        print(z)
         self.check_environments(z)
 
         with self.assertRaises(subprocess.CalledProcessError):

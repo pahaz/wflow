@@ -1,3 +1,4 @@
+from __future__ import print_function
 import os
 
 __author__ = 'pahaz'
@@ -24,6 +25,7 @@ def simple_event_listener(**kwargs):
 
     print("event example ... ")
     print("event example ... ")
+    print("simple_event_listener(**{0!r})".format(kwargs))
     print(strenv(env))
     print("PWD=" + __plugin_root__)
     print('EVENT!',

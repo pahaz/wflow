@@ -79,7 +79,8 @@ install_git:
 create_venv: install_python3
 	$(info CREATE VENV ${SCRIPT_VENV_PATH})
 	@[ -f ${SCRIPT_VENV_PATH}/bin/python ] || virtualenv --python=python3 --always-copy ${SCRIPT_VENV_PATH}
-	@[ -f ${SCRIPT_VENV_PATH}/requirements.txt ] || ${SCRIPT_VENV_PATH}/bin/pip install ./packages
+	@#[ -f ${SCRIPT_VENV_PATH}/requirements.txt ] || ${SCRIPT_VENV_PATH}/bin/pip install ./packages
+	@[ -f ${SCRIPT_VENV_PATH}/requirements.txt ] || ${SCRIPT_VENV_PATH}/bin/pip install -e packages
 	$(info WRITE INSTALLED PACKAGES ${SCRIPT_VENV_PATH}/requirements.txt)
 	${SCRIPT_VENV_PATH}/bin/pip freeze > ${SCRIPT_VENV_PATH}/requirements.txt
 
@@ -143,9 +144,15 @@ full_clean: check_root clean
 	rm -rf ${SCRIPT_DATA_PATH}
 	userdel ${SCRIPT_USER_NAME} || echo "user '${SCRIPT_USER_NAME}' not exists"
 
+reinstall: full_clean install
+	@echo "done"
+
 test_requirements:
 	pip3 install -r test_requirements.txt
 
 test: check_root test_requirements
 	for x in packages/*/test; do . ${SCRIPT_VENV_PATH}/bin/activate && python $$x || exit 2; done
 	python3 test.py
+
+retest: full_clean install test
+	@echo "done"

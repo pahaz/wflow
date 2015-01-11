@@ -4,8 +4,9 @@ import os
 import sys
 
 from wshell.command_interface import AbstractCommand
-from .parse import parse_repo, ParseError
 from wutil.execute import execute
+
+from .parse import parse_repo, ParseError
 
 
 __author__ = 'pahaz'
@@ -31,6 +32,7 @@ class GitReceivePackCommand(AbstractCommand):
 
         self.log.debug('New repo {1} in {0}'
                        .format(env.SCRIPT_DATA_PATH, secure_repo_dir_name))
+        self.log.warning("----> {0}".format(repo_dns))  # user info
 
         r, _, _ = execute(
             "git init --bare '{name}'".format(name=secure_repo_dir_name),
@@ -49,16 +51,6 @@ class GitReceivePackCommand(AbstractCommand):
             .format(env.SCRIPT_DATA_PATH, name=secure_repo_dir_name)
         )
 
-        # r, _, _ = execute(
-        #     "git-receive-pack '{name}'".format(name=secure_repo_dir_name),
-        #     cwd=env.SCRIPT_DATA_PATH,
-        #
-        #     stderr_to_stdout=False,
-        #     is_collecting_to_buf_stdout=True,
-        #     is_collecting_to_buf_stderr=True,
-        #     stdout=sys.stdout.buffer,
-        #     stderr=sys.stderr.buffer, )
-
         self.log.debug('received')
 
     @classmethod
@@ -69,6 +61,10 @@ class GitReceivePackCommand(AbstractCommand):
         p = super(GitReceivePackCommand, self).get_parser(run_command)
         p.add_argument('repo', help="The repository to sync into.")
         return p
+
+    @classmethod
+    def is_hidden_for_command_list(cls):
+        return True
 
 
 class GitUploadPackCommand(AbstractCommand):
@@ -93,6 +89,7 @@ class GitUploadPackCommand(AbstractCommand):
 
         self.log.debug('Receive repo request {1} from {0}'
                        .format(env.SCRIPT_DATA_PATH, secure_repo_dir_name))
+        self.log.warning("----> {0}".format(repo_dns))  # user info
 
         if not os.path.isdir(repo_local_path):
             raise RuntimeError("error: repository not exists")
@@ -114,3 +111,7 @@ class GitUploadPackCommand(AbstractCommand):
         p = super(GitUploadPackCommand, self).get_parser(run_command)
         p.add_argument('repo', help="The repository to sync into.")
         return p
+
+    @classmethod
+    def is_hidden_for_command_list(cls):
+        return True

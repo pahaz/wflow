@@ -15,9 +15,9 @@ class InteractiveMode(Cmd):
     app_cmd_header = "Application commands (type help <topic>):"
     exclude_commands = ['complete', 'help']
 
-    def __init__(self, parent_app, command_manager, stdin, stdout):
-        self.parent_app = parent_app
-        self.prompt = '(%s) ' % parent_app.NAME
+    def __init__(self, app_core, command_manager, stdin=None, stdout=None):
+        self.app_core = app_core
+        self.prompt = '(%s) ' % app_core.NAME
         self.command_manager = command_manager
         super(InteractiveMode, self).__init__('tab', stdin, stdout)
 
@@ -34,21 +34,26 @@ class InteractiveMode(Cmd):
         # since it already has the logic for executing
         # the subcommand.
         line_parts = shlex.split(line)
-        self.parent_app.run_subcommand(line_parts)
+        self.app_core.run_command(line_parts)
 
     def complete(self, text, state):
         return super(InteractiveMode, self).complete(text, state)
 
     def completenames(self, text, *ignored):
-        names_base = super(InteractiveMode, self).completenames(text,
-                                                                   *ignored)
+        names_base = super(InteractiveMode, self).completenames(text, *ignored)
         if not text:
-            names_app = [n for n, v in self.command_manager
-                         if n not in self.exclude_commands]
+            names_app = [
+                n for n, v in self.command_manager
+                if n not in self.exclude_commands and
+                not v.is_hidden_for_command_list()
+            ]
         else:
-            names_app = [n for n, v in self.command_manager
-                         if n not in self.exclude_commands and
-                         n.startswith(text)]
+            names_app = [
+                n for n, v in self.command_manager
+                if n not in self.exclude_commands and
+                not v.is_hidden_for_command_list() and
+                n.startswith(text)
+            ]
 
         return sorted(names_app + names_base)
 
@@ -63,8 +68,10 @@ class InteractiveMode(Cmd):
             method_name = '_'.join(
                 itertools.chain(
                     ['do'],
-                    itertools.takewhile(lambda x: not x.startswith('-'),
-                                        arg_parts)
+                    itertools.takewhile(
+                        lambda x: not x.startswith('-'),
+                        arg_parts
+                    )
                 )
             )
             # Have the command manager version of the help
@@ -79,12 +86,13 @@ class InteractiveMode(Cmd):
         else:
             super(InteractiveMode, self).do_help(line)
             cmd_names = sorted([n for n, v in self.command_manager
-                                if n not in self.exclude_commands])
+                                if n not in self.exclude_commands
+                                and not v.is_hidden_for_command_list()])
             self.print_topics(self.app_cmd_header, cmd_names, 15, 80)
         return
 
     def do_EOF(self, line):
+        """exit"""
         sys.exit()
 
     do_q = do_quit = do_exit = do_EOF
-

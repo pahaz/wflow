@@ -9,7 +9,7 @@ from wshell.manager import Manager
 from wutil.env import load_env_for_file
 
 __author__ = 'pahaz'
-__version__ = '0.2.0'
+__version__ = '0.2.1'
 
 
 def puts(s):
@@ -17,9 +17,9 @@ def puts(s):
 
 
 class WflowCore(Core):
-    def initialize_app(self, argv):
+    def initialize(self, argv):
         puts(self.copyright)
-        super(WflowCore, self).initialize_app(argv)
+        super(WflowCore, self).initialize(argv)
 
 
 def main(argv):

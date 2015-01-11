@@ -26,6 +26,13 @@ class AbstractCommand(object):
         self.app_args = app_parsed_options
 
     @classmethod
+    def is_hidden_for_command_list(cls):
+        """Return True if command hided for users. Use for special command like
+        git-receive-pack. (Not secured. You can use this command if want)
+        """
+        return False
+
+    @classmethod
     def get_name(cls):
         """Return the command name. Use for command executing.
         """

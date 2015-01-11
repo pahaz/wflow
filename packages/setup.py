@@ -3,7 +3,7 @@ import os
 from setuptools import setup, find_packages
 
 __author__ = 'pahaz'
-__version__ = '0.2.3'
+__version__ = '0.2.4'
 _root_path = os.path.join(os.path.dirname(__file__), '.')
 os.chdir(_root_path)
 

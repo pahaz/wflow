@@ -1,7 +1,8 @@
 import argparse
+import os
 import shlex
-
-from cliff.app import App
+import logging
+import sys
 
 from .interactive import InteractiveMode
 from .command.complete import CompleteCommand
@@ -11,29 +12,35 @@ from .command.help import HelpCommand, HelpAction
 __author__ = 'pahaz'
 
 
-class Core(App):
+class Core(object):
     """
     Core class is the manager interface.
     """
-    ERROR_RETURN_CODE = 1
-    COMMAND_NOT_FOUND_RETURN_CODE = 2
+    _RUN_SUBCOMMAND__ERROR_RETURN_CODE = 1
+    _RUN_SUBCOMMAND__COMMAND_NOT_FOUND_RETURN_CODE = 2
+    _RUN__INITIALIZE_ERROR_RETURN_CODE = 3
 
-    DEFAULT_VERBOSE_LEVEL = 2
-    CONSOLE_MESSAGE_FORMAT = '%(name)s: %(message)s'
-    LOG_FILE_MESSAGE_FORMAT = \
+    LOG__DEFAULT_LOG_LEVEL = 0
+    LOG__CONSOLE_MESSAGE_FORMAT = '%(message)s'
+    LOG__LOG_FILE_MESSAGE_FORMAT = \
         '[%(asctime)s] %(levelname)-8s %(name)s %(message)s'
 
-    log = App.LOG
+    NAME = os.path.splitext(os.path.basename(sys.argv[0]))[0]
+    LOG = logging.getLogger(NAME)
+    LOG_LEVELS = {
+        -1: logging.ERROR,
+        0: logging.WARNING,
+        1: logging.INFO,
+        2: logging.DEBUG
+    }
 
     def __init__(self,
                  manager,
                  copyright='', description='', version='0.0',
-                 stdin=None, stdout=None, stderr=None,
                  interactive_app_factory=InteractiveMode):
         self.copyright = copyright
         self.description = description
         self.version = version
-        self._set_streams(stdin, stdout, stderr)
 
         self.command_manager = manager
         self.command_manager.add_command(HelpCommand)
@@ -44,7 +51,7 @@ class Core(App):
         self.interactive_app_factory = interactive_app_factory
         self.parser = self.build_option_parser(description, version)
         self.interactive_mode = False
-        self.interpreter = None
+        self.interactive_app = None
 
     def build_option_parser(self, description, version, argparse_kwargs=None):
         argparse_kwargs = argparse_kwargs or {}
@@ -62,7 +69,7 @@ class Core(App):
             '-v', '--verbose',
             action='count',
             dest='verbose_level',
-            default=self.DEFAULT_VERBOSE_LEVEL,
+            default=self.LOG__DEFAULT_LOG_LEVEL,
             help='Increase verbosity of output. Can be repeated.',
         )
         parser.add_argument(
@@ -75,8 +82,8 @@ class Core(App):
             '-q', '--quiet',
             action='store_const',
             dest='verbose_level',
-            const=0,
-            help='suppress output except warnings and errors',
+            const=-1,
+            help='suppress output except errors',
         )
         parser.add_argument(
             '-h', '--help',
@@ -103,72 +110,151 @@ class Core(App):
         )
         return parser
 
-    def initialize_app(self, argv):
+    def configure_logging(self):
+        """Create logging handlers for any log output.
+        """
+        root_logger = logging.getLogger('')
+        root_logger.setLevel(logging.DEBUG)
+
+        # Set up logging to a file
+        if self.options.log_file:
+            file_handler = logging.FileHandler(
+                filename=self.options.log_file,
+            )
+            formatter = logging.Formatter(self.LOG__LOG_FILE_MESSAGE_FORMAT)
+            file_handler.setFormatter(formatter)
+            root_logger.addHandler(file_handler)
+
+        # Always send higher-level messages to the console via stderr
+        console = logging.StreamHandler()
+        console_level = self.LOG_LEVELS.get(self.options.verbose_level,
+                                            logging.DEBUG)
+        console.setLevel(console_level)
+        formatter = logging.Formatter(self.LOG__CONSOLE_MESSAGE_FORMAT)
+        console.setFormatter(formatter)
+        root_logger.addHandler(console)
+
+    def _login_shell_command_argv_support(self, argv):
+        # if -c or --command
         if self.options.command:
             command = shlex.split(self.options.command)
             argv[:] = command + argv
 
-        # set interactive after `-c` fix
-        self.interactive_mode = not argv
+    def run(self, argv):
+        """Equivalent to the main program for the application.
 
-    def prepare_to_run_command(self, command):
-        self.log.debug('prepare_to_run_command `{0}`'
-                       .format(command.get_name()))
-
-        name = command.get_name()
-        event_name = 'pre-' + name
-        rez = self.event_manager.trigger_event(event_name, command=command,
-                                               env=self.env)
-        if rez:
-            self.log.debug('event `{1}` results: {0}'.format(rez, event_name))
-
-    def clean_up(self, command, result, error):
-        self.log.debug('clean_up `{0}`'.format(command.get_name()))
-        if error:
-            self.log.debug('got an error: {0}'.format(error))
-
-        name = command.get_name()
-        event_name = 'post-' + name
-        rez = self.event_manager.trigger_event(event_name, command=command,
-                                               result=result, error=error,
-                                               env=self.env)
-        if rez:
-            self.log.debug('event {1} results: {0}'.format(rez, event_name))
-
-    def run_subcommand(self, argv):
+        :param argv: input arguments and options
+        :paramtype argv: list of str
+        """
         try:
-            subcommand = self.command_manager.find_command(argv)
+            self.options, remainder = self.parser.parse_known_args(argv)
+            self.configure_logging()
+            self._login_shell_command_argv_support(remainder)
+            self.interactive_mode = not remainder
+            self.initialize(remainder)
+        except Exception as err:
+            if hasattr(self, 'options'):
+                debug = self.options.debug
+            else:
+                debug = True
+            if debug:
+                self.LOG.exception(err)
+                raise
+            else:
+                self.LOG.error(err)
+            return self._RUN__INITIALIZE_ERROR_RETURN_CODE
+
+        return self.run_interactive_mode() if self.interactive_mode else \
+            self.run_command(remainder)
+
+    def run_interactive_mode(self):
+        self.interactive_app = self.interactive_app_factory(
+            self,
+            self.command_manager)
+        self.interactive_app.cmdloop()
+        return 0
+
+    def run_command(self, argv):
+        try:
+            command_factory, command_name, command_argv = \
+                self.command_manager.find_command(argv)
         except ValueError as e:
             if self.options.debug:
                 self.LOG.exception(e)
             else:
                 self.LOG.error(e)
-            return self.COMMAND_NOT_FOUND_RETURN_CODE
+            return self._RUN_SUBCOMMAND__COMMAND_NOT_FOUND_RETURN_CODE
 
-        command_factory, command_name, sub_argv = subcommand
         command = command_factory(self, self.options)
-        result = self.ERROR_RETURN_CODE
+
+        result = self._RUN_SUBCOMMAND__ERROR_RETURN_CODE
         error = None
         try:
-            self.prepare_to_run_command(command)
-            full_name = (command_name
-                         if self.interactive_mode
-                         else ' '.join([self.NAME, command_name]))
-            result = command.run(full_name, sub_argv)
+            # pre run
+            self.LOG.debug('pre_run_command `{0}`'
+                           .format(command_name))
+            self.pre_run_command(command)
+
+            # trigger event
+            pre_run_event_name = 'pre-' + command_name
+            self.LOG.debug('trigger_event `{0}`'.format(pre_run_event_name))
+            event_result_list = self.event_manager.trigger_event(
+                pre_run_event_name,
+                command=command,
+                env=self.env)
+            if event_result_list:
+                self.LOG.debug('event `{1}` results: {0}'
+                               .format(event_result_list, pre_run_event_name))
+
+            # run
+            run_command_full_name = (command_name
+                                     if self.interactive_mode
+                                     else ' '.join([self.NAME, command_name]))
+            result = command.run(run_command_full_name, command_argv)
         except Exception as e:
-            error = e
+            error = e  # use in finally
             msg = "Caught exception: {0}".format(e)
             if self.options.debug:
                 self.LOG.exception(msg)
             else:
                 self.LOG.error(msg)
+
+            self.LOG.debug('Debug error: {0}'.format(error), exc_info=True)
         finally:
             try:
-                self.clean_up(command, result, error)
+                # post run
+                self.LOG.debug('post_run_command `{0}`'.format(command_name))
+                self.post_run_command(command, result, error)
+
+                # trigger event
+                name = command.get_name()
+                event_name = 'post-' + name
+                self.LOG.debug('trigger_event `{0}`'.format(event_name))
+                event_result_list = self.event_manager.trigger_event(
+                    event_name,
+                    command=command,
+                    result=result,
+                    error=error,
+                    env=self.env)
+                if event_result_list:
+                    self.LOG.debug('event `{1}` results: {0}'
+                                   .format(event_result_list, event_name))
+
             except Exception as e:
                 msg = "Could not clean up: {0}".format(e)
                 if self.options.debug:
                     self.LOG.exception(msg)
                 else:
                     self.LOG.error(msg)
+
+                self.LOG.debug('Debug error: {0}'.format(error), exc_info=True)
         return result
+
+    def initialize(self, argv):
+        pass
+
+    def pre_run_command(self, command):
+        pass
+
+    def post_run_command(self, command, result, error):
+        pass
