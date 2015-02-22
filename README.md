@@ -1,4 +1,4 @@
-[![Build Status](https://travis-ci.org/8iq/wflow.svg?branch=master)](https://travis-ci.org/8iq/wflow)
+[![Build Status](https://travis-ci.org/pahaz/wflow.svg?branch=master)](https://travis-ci.org/pahaz/wflow)
 Shell build tool.
 
 You can use this repo as example for creating you custom user login shells.
