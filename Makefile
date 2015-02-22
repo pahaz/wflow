@@ -151,9 +151,9 @@ reinstall: full_clean install
 	@echo "done"
 
 test_pythons: check_root
-	add-apt-repository ppa:fkrull/deadsnakes
+	add-apt-repository ppa:fkrull/deadsnakes -y
 	apt-get update 
-	apt-get install python2.7 python3.2 python3.4 
+	apt-get install python2.7 python3.2 python3.4 -y
 
 test_requirements:
 	pip3 install -r test_requirements.txt
