@@ -1,5 +1,5 @@
 # example python plugin #
-   
+
 ## printenv (command) ##
 
     ---------------------------------------->
@@ -16,7 +16,6 @@
      sudo wflow-install-plugin plugins/example_python_plugin/ --force
      wflow printenv -v
 
-    
 ## error (command) ##
 
     ------------------------------------->
@@ -43,7 +42,7 @@
         |-----------------------|
         | example python plugin |
         |-----------------------|    
-    
+
 #### example ####
 
      sudo wflow-install-plugin plugins/example_python_plugin/ --force

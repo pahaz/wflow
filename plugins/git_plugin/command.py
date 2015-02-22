@@ -3,7 +3,7 @@ import logging
 import os
 import sys
 
-from wshell.command_interface import AbstractCommand
+from wshell.abc_command import AbstractCommand
 from wutil.execute import execute
 
 from .parse import parse_repo, ParseError
@@ -32,7 +32,8 @@ class GitReceivePackCommand(AbstractCommand):
 
         self.log.debug('New repo {1} in {0}'
                        .format(env.SCRIPT_DATA_PATH, secure_repo_dir_name))
-        self.log.warning("----> {0}".format(repo_dns))  # user info
+
+        self.write_message_for_user(repo_dns)  # user info
 
         r, _, _ = execute(
             "git init --bare '{name}'".format(name=secure_repo_dir_name),

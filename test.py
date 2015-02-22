@@ -3,11 +3,14 @@ import os
 import subprocess
 import unittest
 import tempfile
-
-import six
-
+import sys
 
 __author__ = 'pahaz'
+
+if sys.version_info[0] == 3:
+    binary_type = bytes
+else:
+    binary_type = str
 
 SCRIPT_NAME = 'wflow'
 SCRIPT_PLUGIN_INSTALLER_NAME = SCRIPT_NAME + '-install-plugin'
@@ -16,7 +19,7 @@ SCRIPT_TRIGGER_EVENT_NAME = SCRIPT_NAME + '-trigger-event'
 SCRIPT_USER_NAME = 'wflow'
 SCRIPT_DATA_PATH = '/home/' + SCRIPT_USER_NAME
 
-SCRIPT_PLUGIN_PATH = '/var/lib/' + SCRIPT_NAME + '/plugins'
+SCRIPT_PLUGINS_PATH = '/var/lib/' + SCRIPT_NAME + '/plugins'
 SCRIPT_VENV_PATH = '/var/lib/' + SCRIPT_NAME + '/venv'
 SCRIPT_PATH = '/usr/local/bin/' + SCRIPT_NAME
 SCRIPT_PLUGIN_INSTALLER_PATH = '/usr/local/bin/' + SCRIPT_PLUGIN_INSTALLER_NAME
@@ -36,7 +39,7 @@ def local(cmd, capture=True, env=None):
               '----------------'.format(e.output.decode(), e.returncode))
         raise
     if capture:
-        if isinstance(stdout_and_stderr, six.binary_type):
+        if isinstance(stdout_and_stderr, binary_type):
             stdout_and_stderr = stdout_and_stderr.decode('utf-8', 'ignore')
         return stdout_and_stderr
 
@@ -75,7 +78,7 @@ def git_push(cwd, remote_repo, password):
 
     stdout_and_stderr = z.before
 
-    if isinstance(stdout_and_stderr, six.binary_type):
+    if isinstance(stdout_and_stderr, binary_type):
         stdout_and_stderr = stdout_and_stderr.decode('utf-8', 'ignore')
 
     return stdout_and_stderr
@@ -103,7 +106,7 @@ def git_clone(cwd, remote_repo, password):
 
     stdout_and_stderr = z.before
 
-    if isinstance(stdout_and_stderr, six.binary_type):
+    if isinstance(stdout_and_stderr, binary_type):
         stdout_and_stderr = stdout_and_stderr.decode('utf-8', 'ignore')
 
     return stdout_and_stderr
@@ -127,7 +130,7 @@ class TestPlugin(unittest.TestCase):
 
         self.assertIn('event example-bash', z)
         self.check_environments(z)
-        self.check_pwd(SCRIPT_PLUGIN_PATH + '/example_simple_plugin', z)
+        self.check_pwd(SCRIPT_PLUGINS_PATH + '/example_simple_plugin', z)
         self.check_path(z)
 
         z = local('wflow-trigger-event example-python3',
@@ -135,7 +138,7 @@ class TestPlugin(unittest.TestCase):
 
         self.assertIn('event example-python3', z)
         self.check_environments(z)
-        self.check_pwd(SCRIPT_PLUGIN_PATH + '/example_simple_plugin', z)
+        self.check_pwd(SCRIPT_PLUGINS_PATH + '/example_simple_plugin', z)
         self.check_path(z)
 
     def test_example_python_plugin(self):
@@ -155,7 +158,7 @@ class TestPlugin(unittest.TestCase):
 
         self.assertIn('event example', z)
         self.check_environments(z)
-        self.check_pwd(SCRIPT_PLUGIN_PATH + '/example_python_plugin', z)
+        self.check_pwd(SCRIPT_PLUGINS_PATH + '/example_python_plugin', z)
 
         z = local('wflow printenv -v')
         print(z)
@@ -220,7 +223,7 @@ class TestPlugin(unittest.TestCase):
         self.assertIn('SCRIPT_TRIGGER_EVENT_NAME=' +
                       SCRIPT_TRIGGER_EVENT_NAME, z)
         self.assertIn('SCRIPT_DATA_PATH=' + SCRIPT_DATA_PATH, z)
-        self.assertIn('SCRIPT_PLUGIN_PATH=' + SCRIPT_PLUGIN_PATH, z)
+        self.assertIn('SCRIPT_PLUGINS_PATH=' + SCRIPT_PLUGINS_PATH, z)
         self.assertIn('SCRIPT_VENV_PATH=' + SCRIPT_VENV_PATH, z)
 
     def check_pwd(self, pwd, z):

@@ -7,7 +7,7 @@ import sys
 import argparse
 import shutil
 
-from wutil.env import load_env_for_file
+from wutil.env import load_env
 from wutil.file import set_executable
 from wutil.execute import simple_execute
 
@@ -28,7 +28,7 @@ def is_root_access():
 
 def do_install_plugin(env, installed_plugins, new_plugin_path,
                       force_install):
-    plugin_path = env.SCRIPT_PLUGIN_PATH
+    plugin_path = env.SCRIPT_PLUGINS_PATH
     venv_path = env.SCRIPT_VENV_PATH
 
     plugin_name = os.path.basename(new_plugin_path)
@@ -77,9 +77,9 @@ def do_install_plugin(env, installed_plugins, new_plugin_path,
 
 
 def main(argv):
-    env = load_env_for_file(__file__)
+    env = load_env(__file__ + '.ini')
 
-    directory_for_storing_plugins = env.SCRIPT_PLUGIN_PATH
+    directory_for_storing_plugins = env.SCRIPT_PLUGINS_PATH
     directory_for_storing_data = env.SCRIPT_DATA_PATH
     directory_for_storing_venv = env.SCRIPT_VENV_PATH
     owner_username = env.SCRIPT_USER_NAME

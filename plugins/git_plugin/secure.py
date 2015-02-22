@@ -1,6 +1,6 @@
 import os
 import re
-import six
+from wutil import _six
 
 __author__ = 'pahaz'
 
@@ -10,10 +10,10 @@ _windows_device_files = ('CON', 'AUX', 'COM1', 'COM2', 'COM3', 'COM4', 'LPT1',
 
 
 def secure_filename(filename):
-    if isinstance(filename, six.text_type):
+    if isinstance(filename, _six.text_type):
         from unicodedata import normalize
         filename = normalize('NFKD', filename).encode('ascii', 'ignore')
-        if not six.PY2:
+        if not _six.PY2:
             filename = filename.decode('ascii')
 
     for sep in os.path.sep, os.path.altsep:

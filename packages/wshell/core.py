@@ -14,7 +14,7 @@ __author__ = 'pahaz'
 
 class Core(object):
     """
-    Core class is the manager interface.
+    Core class.
     """
     _RUN_SUBCOMMAND__ERROR_RETURN_CODE = 1
     _RUN_SUBCOMMAND__COMMAND_NOT_FOUND_RETURN_CODE = 2
@@ -26,6 +26,9 @@ class Core(object):
         '[%(asctime)s] %(levelname)-8s %(name)s %(message)s'
 
     NAME = os.path.splitext(os.path.basename(sys.argv[0]))[0]
+    DESCRIPTION = "Core class"
+    VERSION = "0.0"
+
     LOG = logging.getLogger(NAME)
     LOG_LEVELS = {
         -1: logging.ERROR,
@@ -35,25 +38,24 @@ class Core(object):
     }
 
     def __init__(self,
-                 manager,
-                 copyright='', description='', version='0.0',
-                 interactive_app_factory=InteractiveMode):
-        self.copyright = copyright
-        self.description = description
-        self.version = version
-
-        self.command_manager = manager
+                 command_manager, event_manager, env,
+                 interactive_app_factory=InteractiveMode,
+                 **kwargs):
+        self.command_manager = command_manager
         self.command_manager.add_command(HelpCommand)
         self.command_manager.add_command(CompleteCommand)
-        self.event_manager = manager
-        self.env = manager.get_env()
+
+        self.event_manager = event_manager
+
+        self.env = env
 
         self.interactive_app_factory = interactive_app_factory
-        self.parser = self.build_option_parser(description, version)
+        self.parser = self.build_option_parser()
         self.interactive_mode = False
         self.interactive_app = None
 
-    def build_option_parser(self, description, version, argparse_kwargs=None):
+    def build_option_parser(self, argparse_kwargs=None):
+        description, version = self.DESCRIPTION, self.VERSION
         argparse_kwargs = argparse_kwargs or {}
         parser = argparse.ArgumentParser(
             description=description,
@@ -185,7 +187,8 @@ class Core(object):
                 self.LOG.error(e)
             return self._RUN_SUBCOMMAND__COMMAND_NOT_FOUND_RETURN_CODE
 
-        command = command_factory(self, self.options)
+        command = command_factory(
+            self.event_manager, self.command_manager, self.env)
 
         result = self._RUN_SUBCOMMAND__ERROR_RETURN_CODE
         error = None

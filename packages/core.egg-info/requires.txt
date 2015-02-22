@@ -1,2 +1,1 @@
-cliff==1.7.0
-six
+docker-py

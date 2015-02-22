@@ -20,7 +20,7 @@ def simple_event_listener(**kwargs):
     TRIGGER_EVENT_NAME = env.get('SCRIPT_TRIGGER_EVENT_NAME')
     USER_NAME = env.get('SCRIPT_USER_NAME')
     DATA_PATH = env.get('SCRIPT_DATA_PATH')
-    PLUGIN_PATH = env.get('SCRIPT_PLUGIN_PATH')
+    PLUGINS_PATH = env.get('SCRIPT_PLUGINS_PATH')
     VENV_PATH = env.get('SCRIPT_VENV_PATH')
 
     print("event example ... ")
@@ -30,7 +30,7 @@ def simple_event_listener(**kwargs):
     print("PWD=" + __plugin_root__)
     print('EVENT!',
           NAME, PLUGIN_INSTALLER_NAME, TRIGGER_EVENT_NAME, USER_NAME,
-          DATA_PATH, PLUGIN_PATH, VENV_PATH)
+          DATA_PATH, PLUGINS_PATH, VENV_PATH)
     print('hook ... example ...')
     print('hook ... example ...')
 

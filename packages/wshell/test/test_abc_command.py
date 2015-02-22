@@ -1,5 +1,5 @@
 import unittest
-from wshell.command_interface import AbstractCommand
+from wshell.abc_command import AbstractCommand
 from wshell.test import BaseTestCase
 
 
@@ -12,7 +12,7 @@ class TestCommandInterface(BaseTestCase):
             pass
 
         with self.assertRaises(TypeError) as cm:
-            c = Cmd(None, None)
+            c = Cmd(None, None, None)
 
         # print(dir(cm.exception), cm.exception.args)
         self.assertIn("Can't instantiate abstract class", str(cm.exception))
@@ -22,7 +22,7 @@ class TestCommandInterface(BaseTestCase):
         self.assertEqual(Cmd.get_name(), 'cmd')
         Cmd = self.mock_command_cls('CmdCommand')
         self.assertEqual(Cmd.get_name(), 'cmd')
-        c = Cmd(None, None)
+        c = Cmd(None, None, None)
         self.assertEqual(c.get_name(), 'cmd')
         
         class SuperCmd(Cmd):
@@ -31,23 +31,19 @@ class TestCommandInterface(BaseTestCase):
                 return 'su cmd'
 
         self.assertEqual(SuperCmd.get_name(), 'su cmd')
-        c = SuperCmd(None, None)
+        c = SuperCmd(None, None, None)
         self.assertEqual(c.get_name(), 'su cmd')
 
     def test_get_description(self):
         docs = "Some docs"
         Cmd = self.mock_command_cls('Cmd', docs)
-        c = Cmd(None, None)
+        c = Cmd(None, None, None)
         self.assertEqual(c.get_description(), docs)
 
     def test_get_parser(self):
         docs = "Some docs"
         Cmd = self.mock_command_cls('Cmd', docs)
-        c = Cmd(None, None)
+        c = Cmd(None, None, None)
 
         z = c.get_parser("somesome.py cmd")
         self.assertEqual(z.description, docs)
-
-
-if __name__ == "__main__":
-    unittest.main()

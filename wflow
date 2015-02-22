@@ -5,11 +5,11 @@ from __future__ import unicode_literals, print_function, absolute_import, \
 import sys
 
 from wshell.core import Core
-from wshell.manager import Manager
-from wutil.env import load_env_for_file
+from wshell.module import make_managers_and_load_them_from_plugin_modules
+from wutil.env import load_env
 
 __author__ = 'pahaz'
-__version__ = '0.2.1'
+__version__ = '0.2.2'
 
 
 def puts(s):
@@ -17,6 +17,18 @@ def puts(s):
 
 
 class WflowCore(Core):
+    def __init__(self,
+                 command_manager, event_manager, env,
+                 copyright='',
+                 description='',
+                 version='',
+                 **kwargs):
+        self.copyright = copyright
+        self.DESCRIPTION = description
+        self.VERSION = version
+        super(WflowCore, self).__init__(command_manager, event_manager, env,
+                                        **kwargs)
+
     def initialize(self, argv):
         puts(self.copyright)
         super(WflowCore, self).initialize(argv)
@@ -27,17 +39,20 @@ def main(argv):
     copyright = '\nHi! I am `wflow` v {0} \n2014 (c) {1}\n\n' \
         .format(__version__, __author__)
 
-    env = load_env_for_file(__file__)
+    env = load_env(__file__ + '.ini')
 
-    directory_for_storing_plugins = env.SCRIPT_PLUGIN_PATH
+    directory_for_storing_plugins = env.SCRIPT_PLUGINS_PATH
     directory_for_storing_data = env.SCRIPT_DATA_PATH
     directory_for_storing_venv = env.SCRIPT_VENV_PATH
     owner_username = env.SCRIPT_USER_NAME
 
-    cm = Manager(directory_for_storing_plugins,
-                 directory_for_storing_venv,
-                 env)
-    app = WflowCore(cm,
+    command_mngr, event_mngr = make_managers_and_load_them_from_plugin_modules(
+        directory_for_storing_plugins,
+        directory_for_storing_venv,
+        env
+    )
+
+    app = WflowCore(command_mngr, event_mngr, env,
                     copyright=copyright,
                     description=description,
                     version=__version__)

@@ -5,7 +5,7 @@ from . import command
 __author__ = 'pahaz'
 
 
-def load(manager):
-    manager.add_command(command.GitReceivePackCommand)
-    manager.add_command(command.GitUploadPackCommand)
-    # manager.add_event_listener('example', event.simple_event_listener)
+def load(command_manager, event_manager, env):
+    command_manager.add_command(command.GitReceivePackCommand)
+    command_manager.add_command(command.GitUploadPackCommand)
+    # event_manager.add_event_listener('example', event.simple_event_listener)

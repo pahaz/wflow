@@ -1,7 +1,7 @@
 import argparse
 import sys
 import traceback
-from ..command_interface import AbstractCommand
+from ..abc_command import AbstractCommand
 
 __author__ = 'pahaz'
 

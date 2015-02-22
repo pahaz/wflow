@@ -1,5 +1,5 @@
-import six
-from .command_interface import AbstractCommand
+from wutil._six import string_types
+from .abc_command import AbstractCommand
 
 __author__ = 'pahaz'
 
@@ -17,7 +17,7 @@ class CommandManager(object):
         # simple_plugin/__init__.py
 
         import logging
-        from wshell.command_interface import AbstractCommand
+        from wshell.abc_command import AbstractCommand
 
 
         class SimpleCommand(AbstractCommand):
@@ -31,8 +31,8 @@ class CommandManager(object):
                 self.app.stdout.write('hi!\n')
 
 
-        def load(manager):
-            manager.add_command(SimpleCommand)
+        def load(command_manager, event_manager, env):
+            command_manager.add_command(SimpleCommand)
 
     """
     def __init__(self):
@@ -49,7 +49,7 @@ class CommandManager(object):
         """Given an argument list, find a command and
         return the processor and any remaining arguments.
         """
-        if isinstance(argv, six.string_types):
+        if isinstance(argv, string_types):
             raise TypeError('`argv` is not support string type')
 
         search_args = argv[:]

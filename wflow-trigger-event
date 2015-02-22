@@ -5,11 +5,11 @@ from __future__ import unicode_literals, print_function, absolute_import, \
 import argparse
 import sys
 
-from wshell.manager import Manager
-from wutil.env import load_env_for_file
+from wshell.module import make_managers_and_load_them_from_plugin_modules
+from wutil.env import load_env
 
 __author__ = 'pahaz'
-__version__ = '0.2.0'
+__version__ = '0.2.1'
 
 
 def detect_type(str_value):
@@ -25,9 +25,9 @@ def detect_type(str_value):
 
 
 def main(argv):
-    env = load_env_for_file(__file__)
+    env = load_env(__file__ + '.ini')
 
-    directory_for_storing_plugins = env.SCRIPT_PLUGIN_PATH
+    directory_for_storing_plugins = env.SCRIPT_PLUGINS_PATH
     directory_for_storing_data = env.SCRIPT_DATA_PATH
     directory_for_storing_venv = env.SCRIPT_VENV_PATH
     owner_username = env.SCRIPT_USER_NAME
@@ -46,12 +46,19 @@ def main(argv):
     parser.add_argument("args", nargs="*", action=StoreNameValuePair,
                         help="key=value pair (ex: AAA=\"a a a\" B=2 C=1.2)")
     parsed_args = parser.parse_args(argv)
-    cm = Manager(directory_for_storing_plugins, directory_for_storing_venv,
-                 env)
+
+    command_mngr, event_mngr = make_managers_and_load_them_from_plugin_modules(
+        directory_for_storing_plugins,
+        directory_for_storing_venv,
+        env
+    )
+
     print("Trigger event '{0}' ".format(parsed_args.name),
           ', '.join(map(lambda v: "{0}={1}".format(v[0], v[1]),
                         parsed_args.args.items())))
-    results = cm.trigger_event(parsed_args.name, env=env, **parsed_args.args)
+
+    results = event_mngr.trigger_event(parsed_args.name, env=env,
+                                       **parsed_args.args)
     for result in results:
         f, result = result
         print("Hook {0} return {1}".format(f.__name__, result))

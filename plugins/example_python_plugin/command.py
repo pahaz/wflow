@@ -1,6 +1,6 @@
 # coding=utf-8
 import logging
-from wshell.command_interface import AbstractCommand
+from wshell.abc_command import AbstractCommand
 
 __author__ = 'pahaz'
 
@@ -13,7 +13,7 @@ class PrintEnvCommand(AbstractCommand):
     def take_action(self, parsed_args):
         env = self.get_env()
         for k, v in env.items():
-            print(":: {0}={1} ::".format(k, v))
+            self.write_message_for_user(":: {0}={1} ::".format(k, v))
 
 
 class ErrorCommand(AbstractCommand):

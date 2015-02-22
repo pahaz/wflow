@@ -1,5 +1,7 @@
+from copy import deepcopy
 import unittest
-from wutil.env import Env
+import collections
+from wutil.env import Env, is_hashable_type
 from wutil.test import BaseTestCase
 
 __author__ = 'pahaz'
@@ -9,11 +11,10 @@ class TestEnv(BaseTestCase):
     def test_default_env(self):
         e = Env({'OK': 22})
         self.assertEqual(e.OK, 22)
-        with self.assertRaises(AttributeError):
-            self.assertIs(e.SECRET, None)
+        self.assertEqual(e['OK'], 22)
 
-        with self.assertRaises(TypeError):
-            e['OK']
+        with self.assertRaises(AttributeError):
+            e.SECRET
 
         with self.assertRaises(TypeError):
             e['Z'] = 2
@@ -22,16 +23,16 @@ class TestEnv(BaseTestCase):
             e['OK'] = 5
 
         with self.assertRaises(TypeError):
-            'OK' in e
+            e.Z = 2
 
         with self.assertRaises(TypeError):
-            'OK' not in e
+            e.OK = 5
 
-        with self.assertRaises(TypeError):
-            iter(e)
+        self.assertIn('OK', e)
+        self.assertIsInstance(e, collections.Mapping)
 
     def test_suppress_error(self):
-        e = Env({'OK': 22}, suppress_attribute_error=True)
+        e = Env({'OK': 22}, raise_attribute_error=False)
         self.assertEqual(e.OK, 22)
         self.assertIs(e.SECRET, None)
 
@@ -40,6 +41,11 @@ class TestEnv(BaseTestCase):
         z = e.items()
         self.assertIn(('OK', 22), z)
         self.assertIn(('NOT_OK', 33), z)
+
+    def test_iter(self):
+        e = Env({'OK': 22, 'NOT_OK': 33})
+        i = iter(e)
+        self.assertEqual(set(i), {'OK', 'NOT_OK'})
 
     def test_get(self):
         e = Env({'OK': 22, 'NOT_OK': None})
@@ -68,14 +74,17 @@ class TestEnv(BaseTestCase):
             e.get = lambda z: z
 
     def test_as_dict(self):
-        z = [0]
+        z = (2, 3, 4, 5, 6)
         e = Env({'OK': z})
         d = e.as_dict()
         zz = d['OK']
-        self.assertTrue(z is not zz)
-        z.append(2)
-        self.assertEqual(len(z), 2)
-        self.assertEqual(len(zz), 1)
+        self.assertEqual(z, zz)
 
-if __name__ == "__main__":
-    unittest.main()
+    def test_raise_unhashable(self):
+        for x in ([], set()):
+            with self.assertRaises(TypeError):
+                e = Env({'OK': x})
+
+    def test_is_simple_type(self):
+        for x in (1, 1.2, 'qwe'):
+            self.assertTrue(is_hashable_type(x), repr(type(x)))

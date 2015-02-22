@@ -1,0 +1,8 @@
+[run]
+omit = *test*
+
+[report]
+omit =
+    *test*
+    */setup*
+    */__init__*

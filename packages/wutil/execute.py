@@ -5,9 +5,9 @@ import shlex
 import subprocess
 import sys
 import select
-
-import six
 import time
+
+from wutil._six import text_type
 
 
 __author__ = 'pahaz'
@@ -45,7 +45,7 @@ def simple_execute(command,
         stderr_to_stdout=True,
         is_collecting_to_buf_stdout=False,
         is_collecting_to_buf_stderr=False,
-        stdout=sys.stderr.buffer,
+        stdout=sys.stderr,
         stderr=None,
 
         check_return_code_and_raise_error=check_return_code_and_raise_error, )
@@ -63,8 +63,8 @@ def execute(
         stderr_to_stdout=False,
         is_collecting_to_buf_stdout=True,
         is_collecting_to_buf_stderr=True,
-        stdout=sys.stdout.buffer,
-        stderr=sys.stderr.buffer,
+        stdout=sys.stdout,
+        stderr=sys.stderr,
 
         check_return_code_and_raise_error=True):
     """Execute shell command
@@ -88,6 +88,12 @@ def execute(
     printable_command = ' '.join(command) \
         if isinstance(command, (tuple, list)) else command
 
+    # https://github.com/pexpect/pexpect/issues/30/
+    if hasattr(stdout, 'buffer'):
+        stdout = getattr(stdout, 'buffer')
+    if hasattr(stderr, 'buffer'):
+        stderr = getattr(stderr, 'buffer')
+
     if env and not isinstance(env, dict):
         if hasattr(env, 'as_dict'):
             env = env.as_dict()
@@ -103,7 +109,7 @@ def execute(
             init_env.update(env.items())
         env = init_env
 
-    if not shell and isinstance(command, six.text_type):
+    if not shell and isinstance(command, text_type):
         command = shlex.split(command)
 
     _buf_out = []
@@ -153,7 +159,7 @@ def execute(
 
                     if proc.stdout in ds:
                         t = proc.stdout.read()
-                        log.info('t', repr(t))
+                        log.info('t:' + repr(t))
                         if is_collecting_to_buf_stdout:
                             _buf_out.append(t)
                         if stdout:
@@ -161,7 +167,7 @@ def execute(
 
                     if proc.stderr in ds:
                         t = proc.stderr.read()
-                        log.info('t', repr(t))
+                        log.info('t:' + repr(t))
                         if is_collecting_to_buf_stderr:
                             _buf_err.append(t)
                         if stderr:

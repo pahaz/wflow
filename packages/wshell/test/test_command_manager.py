@@ -1,5 +1,5 @@
 import unittest
-from wshell.command_interface import AbstractCommand
+from wshell.abc_command import AbstractCommand
 from wshell.test import BaseTestCase
 
 
@@ -15,7 +15,7 @@ class TestCommandManager(BaseTestCase):
         cm.add_command(c1)
         cm.add_command(c2)
 
-        self.assertEqual(set(dict(list(cm)).keys()), set(['go2', 'go1']))
+        self.assertEqual(set(dict(list(cm)).keys()), {'go2', 'go1'})
 
     def test_find_command(self):
         Cmd = self.mock_command_cls()
@@ -34,7 +34,7 @@ class TestCommandManager(BaseTestCase):
         cm.add_command(c3)
 
         self.assertEqual(set(dict(list(cm)).keys()),
-                         set(['go1', 'go2', 'go 3']))
+                         {'go1', 'go2', 'go 3'})
 
         with self.assertRaises(TypeError) as c:
             cm.find_command('go1 --help')
@@ -53,7 +53,3 @@ class TestCommandManager(BaseTestCase):
 
         with self.assertRaises(ValueError) as c:
             cm.find_command(['awfawfawfaw', '--help'])
-
-
-if __name__ == "__main__":
-    unittest.main()

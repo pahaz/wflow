@@ -1,6 +1,6 @@
 import unittest
-from wshell.command_interface import AbstractCommand
-from wshell.manager import CommandManager
+from wshell.abc_command import AbstractCommand
+from wshell.command_manager import CommandManager
 
 __author__ = 'pahaz'
 
@@ -26,13 +26,8 @@ class BaseTestCase(unittest.TestCase):
 
         return z
 
-    def mock_command_instance(self, cls_args=(None, None),
+    def mock_command_instance(self, cls_args=(None, None, None),
                               cls_name='C', cls_docs='No'):
         Cmd = self.mock_command_cls(cls_name, cls_docs)
         z = Cmd(*cls_args)
         return z
-
-
-from .test_command_interface import TestCommandInterface
-from .test_command_manager import TestCommandManager
-from .test_event_manager import TestEventManager

@@ -14,7 +14,7 @@ if __name__ == "__main__":
     TRIGGER_EVENT_NAME = os.environ.get('SCRIPT_TRIGGER_EVENT_NAME')
     USER_NAME = os.environ.get('SCRIPT_USER_NAME')
     DATA_PATH = os.environ.get('SCRIPT_DATA_PATH')
-    PLUGIN_PATH = os.environ.get('SCRIPT_PLUGIN_PATH')
+    PLUGINS_PATH = os.environ.get('SCRIPT_PLUGINS_PATH')
     VENV_PATH = os.environ.get('SCRIPT_VENV_PATH')
 
     print("event example-python3 ... ")
@@ -22,6 +22,6 @@ if __name__ == "__main__":
     print(os.system("printenv"))
     print('EVENT!',
           NAME, PLUGIN_INSTALLER_NAME, TRIGGER_EVENT_NAME, USER_NAME,
-          DATA_PATH, PLUGIN_PATH, VENV_PATH)
+          DATA_PATH, PLUGINS_PATH, VENV_PATH)
     print('hook ... example ...')
     print('hook ... example ...')

@@ -1,5 +1,5 @@
 import unittest
-from wshell.manager import EventManager
+from wshell.event_manager import EventManager
 
 __author__ = 'pahaz'
 
@@ -61,18 +61,13 @@ class TestEventManager(unittest.TestCase):
 
         self.assertEqual('Ok ev1', str(c.exception))
 
-        calls = 0
+        calls = {0}
 
         @em.listen('ev2', 'ev4')
-        def r(**kwargs):
-            nonlocal calls
-            calls += 1
+        def r(z1, calls, **kwargs):
+            calls.update({z1})
 
-        em.trigger_event('ev2', z1=1)
-        em.trigger_event('ev4', z1=2)
+        em.trigger_event('ev2', z1=1, calls=calls)
+        em.trigger_event('ev4', z1=2, calls=calls)
 
-        self.assertEqual(calls, 2)
-
-
-if __name__ == "__main__":
-    unittest.main()
+        self.assertEqual(calls, {1, 2, 0})

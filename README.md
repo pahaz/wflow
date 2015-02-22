@@ -5,6 +5,9 @@ You can use this repo as example for creating you custom user login shells.
 
 # How-to use #
 
+    vagrant up
+    vagrant ssh -- -t 'cd /vagrant; sudo make full_clean && sudo make install && sudo make test'
+
  - Create you custom shell (ex: wflow)
  - Edit Makefile variables for use name `wflow`
  - Write custom plugins-commands for you shell (ex: command_example)
@@ -12,10 +15,4 @@ You can use this repo as example for creating you custom user login shells.
 
 # How-to setup #
 
-    git clone https://github.com/8iq/wflow.git
-    cd wflow
-    cat ./bootstrap.sh | sudo bash
-
-# How-to trigger event #
-
-    wflow-trigger-event event-name
+    wget -qO- https://raw.github.com/8iq/wflow/bootstrap.sh | sudo bash

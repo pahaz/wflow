@@ -18,16 +18,16 @@ class EventManager(object):
             print("Woow simple-event EVENT!!")
 
 
-        def load(manager):
-            manager.add_event_listener('simple-event', woow_printer_listener)
+        def load(command_manager, event_manager, env):
+            event_manager.add_event_listener('simple-event', woow_printer_listener)
     
     """
     def __init__(self):
         """
         Create a new signal.
         """
-        self.receivers = {}
-        self.lock = threading.Lock()
+        self._receivers = {}
+        self._lock = threading.Lock()
 
     def add_event_listener(self, event_name, receiver):
         """
@@ -68,10 +68,10 @@ class EventManager(object):
                 raise TypeError("Event receivers must accept "
                                 "keyword arguments (**kwargs).")
 
-        with self.lock:
-            event_receivers = self.receivers.get(event_name, [])
+        with self._lock:
+            event_receivers = self._receivers.get(event_name, [])
             event_receivers.append(receiver)
-            self.receivers[event_name] = event_receivers
+            self._receivers[event_name] = event_receivers
 
     def rm_event_listener(self, event_name, receiver):
         """
@@ -90,8 +90,8 @@ class EventManager(object):
                 dispatch_uid is specified.
 
         """
-        with self.lock:
-            event_receivers = self.receivers.get(event_name)
+        with self._lock:
+            event_receivers = self._receivers.get(event_name)
             if not event_receivers:
                 raise ValueError('Unknown event name')
 
@@ -101,7 +101,7 @@ class EventManager(object):
                 raise ValueError('Unknown event receiver')
 
     def has_event_listener(self, event_name, receiver):
-        return receiver in self.receivers.get(event_name, [])
+        return receiver in self._receivers.get(event_name, [])
 
     def trigger_event(self, event_name, **kwargs):
         """
@@ -116,7 +116,7 @@ class EventManager(object):
         """
         responses = []
 
-        event_receivers = self.receivers.get(event_name)
+        event_receivers = self._receivers.get(event_name)
         if not event_receivers:
             return responses
 

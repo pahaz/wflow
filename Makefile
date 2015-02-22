@@ -9,26 +9,29 @@ SCRIPT_TRIGGER_EVENT_NAME ?= ${SCRIPT_NAME}-trigger-event
 SCRIPT_USER_NAME ?= wflow
 SCRIPT_DATA_PATH ?= /home/${SCRIPT_USER_NAME}
 
-SCRIPT_PLUGIN_PATH ?= /var/lib/${SCRIPT_NAME}/plugins
-SCRIPT_VENV_PATH ?= /var/lib/${SCRIPT_NAME}/venv
 SCRIPT_PATH ?= /usr/local/bin/${SCRIPT_NAME}
 SCRIPT_PLUGIN_INSTALLER_PATH ?= /usr/local/bin/${SCRIPT_PLUGIN_INSTALLER_NAME}
 SCRIPT_TRIGGER_EVENT_PATH ?= /usr/local/bin/${SCRIPT_TRIGGER_EVENT_NAME}
+
+SCRIPT_PLUGINS_PATH ?= /var/lib/${SCRIPT_NAME}/plugins
+SCRIPT_VENV_PATH ?= /var/lib/${SCRIPT_NAME}/venv
 
 # settings end
 
 define CONFIG
 [DEFAULT]
 SCRIPT_NAME = ${SCRIPT_NAME}
-SCRIPT_PATH = ${SCRIPT_PATH}
 SCRIPT_PLUGIN_INSTALLER_NAME = ${SCRIPT_PLUGIN_INSTALLER_NAME}
-SCRIPT_PLUGIN_INSTALLER_PATH = ${SCRIPT_PLUGIN_INSTALLER_PATH}
 SCRIPT_TRIGGER_EVENT_NAME = ${SCRIPT_TRIGGER_EVENT_NAME}
-SCRIPT_TRIGGER_EVENT_PATH = ${SCRIPT_TRIGGER_EVENT_PATH}
-SCRIPT_PLUGIN_PATH = ${SCRIPT_PLUGIN_PATH}
-SCRIPT_VENV_PATH = ${SCRIPT_VENV_PATH}
+
 SCRIPT_USER_NAME = ${SCRIPT_USER_NAME}
 SCRIPT_DATA_PATH = ${SCRIPT_DATA_PATH}
+
+SCRIPT_PATH = ${SCRIPT_PATH}
+SCRIPT_PLUGINS_PATH = ${SCRIPT_PLUGINS_PATH}
+SCRIPT_VENV_PATH = ${SCRIPT_VENV_PATH}
+SCRIPT_PLUGIN_INSTALLER_PATH = ${SCRIPT_PLUGIN_INSTALLER_PATH}
+SCRIPT_TRIGGER_EVENT_PATH = ${SCRIPT_TRIGGER_EVENT_PATH}
 endef
 
 export CONFIG
@@ -40,7 +43,7 @@ CURRENT_USER_ID = $(shell id -u)
 all:
 	# Type "make install" to install.
 
-install: check_root install_curl install_python3 install_git create_user create_files create_configs patch_shebang install_plugins version
+install: check_root install_curl install_git create_user install_python3 create_venv create_files create_configs patch_shebang install_plugins version
 
 check:
 	@command -v [ > /dev/null && echo "[ <expr> ] ... [OK]" || echo "[ <expr> ] ... [ERROR]"
@@ -65,16 +68,16 @@ install_curl:
 	$(info INSTALL CURL)
 	@command -v curl > /dev/null || apt-get install curl -y
 
+install_git:
+	$(info INSTALL GIT)
+	@command -v git > /dev/null || apt-get install git -y
+
 install_python3:
 	$(info INSTALL PYTHON3 EASY_INSTALL3 PIP3 VIRTUALENV)
 	@command -v python3 > /dev/null || apt-get install python3-dev -y
 	@command -v easy_install3 > /dev/null || apt-get install python3-setuptools -y
 	@command -v pip3 > /dev/null || easy_install3 pip
 	@command -v virtualenv > /dev/null || easy_install3 virtualenv
-
-install_git:
-	$(info INSTALL GIT)
-	@command -v git > /dev/null || apt-get install git -y
 
 create_venv: install_python3
 	$(info CREATE VENV ${SCRIPT_VENV_PATH})
@@ -98,7 +101,7 @@ create_files: create_venv
 	@chmod +x ${SCRIPT_PATH}
 	@chmod +x ${SCRIPT_PLUGIN_INSTALLER_PATH}
 	@chmod +x ${SCRIPT_TRIGGER_EVENT_PATH}
-	mkdir -p ${SCRIPT_PLUGIN_PATH}
+	mkdir -p ${SCRIPT_PLUGINS_PATH}
 
 create_configs: create_files
 	$(info CREATE CONFIG ${SCRIPT_PATH}.ini AND SYMLINK ${SCRIPT_PLUGIN_INSTALLER_PATH}.ini)
@@ -132,8 +135,8 @@ count:
 	@echo "tests/ - `find tests -type f | xargs cat | wc -l`"
 
 clean: check_root
-	$(info CLEAN ${SCRIPT_PLUGIN_PATH} ${SCRIPT_VENV_PATH} ${SCRIPT_PATH} ${SCRIPT_PLUGIN_INSTALLER_PATH})
-	rm -rf ${SCRIPT_PLUGIN_PATH}
+	$(info CLEAN ${SCRIPT_PLUGINS_PATH} ${SCRIPT_VENV_PATH} ${SCRIPT_PATH} ${SCRIPT_PLUGIN_INSTALLER_PATH})
+	rm -rf ${SCRIPT_PLUGINS_PATH}
 	rm -rf ${SCRIPT_VENV_PATH}
 	rm -f ${SCRIPT_PATH} ${SCRIPT_PATH}.ini
 	rm -f ${SCRIPT_PLUGIN_INSTALLER_PATH} ${SCRIPT_PLUGIN_INSTALLER_PATH}.ini
@@ -151,8 +154,13 @@ test_requirements:
 	pip3 install -r test_requirements.txt
 
 test: check_root test_requirements
-	for x in packages/*/test; do . ${SCRIPT_VENV_PATH}/bin/activate && python $$x || exit 2; done
+	tox
 	python3 test.py
 
 retest: full_clean install test
 	@echo "done"
+
+active:
+	@echo . "$(SCRIPT_VENV_PATH)/bin/activate" # use `make active` for activate venv
+
+activate: active

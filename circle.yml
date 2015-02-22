@@ -1,0 +1,9 @@
+test:
+  override:
+    - "chmod +x bootstrap.sh"
+    - "sudo ./bootstrap.sh"
+    - "sudo make test"
+    - "sudo make full_clean"
+    - "sudo make install"
+    - "sudo make test"
+    - "make count"

@@ -1,2 +1,6 @@
 .idea
 .vagrant
+.coverage
+.tox
+*.py[cod]
+__pycache__/

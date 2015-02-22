@@ -3,7 +3,7 @@ import os
 from setuptools import setup, find_packages
 
 __author__ = 'pahaz'
-__version__ = '0.2.4'
+__version__ = '0.2.5'
 _root_path = os.path.join(os.path.dirname(__file__), '.')
 os.chdir(_root_path)
 
@@ -12,7 +12,9 @@ setup(
     version=__version__,
     packages=find_packages(),
     scripts=[],
-    install_requires=['cliff==1.7.0', 'six'],
+    install_requires=[
+        'docker-py',  # use in wdeploy.builders.docker
+    ],  # 'six'
 
     package_data={
         # If any package contains *.txt or *.rst files, include them:
