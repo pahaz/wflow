@@ -1,4 +1,4 @@
-from __future__ import unicode_literals, print_function, generators, division
+from __future__ import print_function, generators, division
 import unittest
 
 from wshell.abc_command import AbstractCommand
