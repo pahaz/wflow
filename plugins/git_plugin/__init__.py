@@ -1,6 +1,6 @@
 # coding=utf-8
 from . import command
-
+from wdeploy.builders.docker.builder import DockerProjectBuilder  # required
 
 __author__ = 'pahaz'
 

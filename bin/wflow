@@ -1,0 +1,40 @@
+#!/usr/bin/env python3
+# coding=utf-8
+from __future__ import unicode_literals, print_function, absolute_import, \
+    generators, with_statement, nested_scopes, division
+import sys
+
+from wshell.core import Core
+
+__author__ = 'pahaz'
+__version__ = '0.2.5'
+
+
+def puts(s):
+    sys.stderr.write(s)
+
+
+class WflowCore(Core):
+    def __init__(self, config_file, copyright='', description='', version=''):
+        self.copyright = copyright
+        self.DESCRIPTION = description
+        self.VERSION = version
+        super(WflowCore, self).__init__(config_file)
+
+    def initialize(self, argv):
+        puts(self.copyright)
+        super(WflowCore, self).initialize(argv)
+
+
+def main(argv):
+    description = "Heroku like deploy tool"
+    copyright = '\nHi! I am `wflow` v {0} \n2014 (c) {1}\n\n' \
+        .format(__version__, __author__)
+    config_file = __file__ + '.ini'
+
+    app = WflowCore(config_file, copyright, description, __version__)
+    return app.run(argv)
+
+
+if __name__ == '__main__':
+    sys.exit(main(sys.argv[1:]))

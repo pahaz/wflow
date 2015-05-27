@@ -12,21 +12,23 @@ if sys.version_info[0] == 3:
 else:
     binary_type = str
 
-SCRIPT_NAME = 'wflow'
-SCRIPT_PLUGIN_INSTALLER_NAME = SCRIPT_NAME + '-install-plugin'
-SCRIPT_TRIGGER_EVENT_NAME = SCRIPT_NAME + '-trigger-event'
+PLATFORM_NAME = 'wflow'
+PLATFORM_PLUGIN_INSTALLER_COMMAND = PLATFORM_NAME + '-install-plugin'
+PLATFORM_TRIGGER_EVENT_COMMAND = PLATFORM_NAME + '-trigger-event'
 
-SCRIPT_USER_NAME = 'wflow'
-SCRIPT_DATA_PATH = '/home/' + SCRIPT_USER_NAME
+PLATFORM_USERNAME = 'wflow'
+PLATFORM_DATA_PATH = '/home/' + PLATFORM_USERNAME
 
-SCRIPT_PLUGINS_PATH = '/var/lib/' + SCRIPT_NAME + '/plugins'
-SCRIPT_VENV_PATH = '/var/lib/' + SCRIPT_NAME + '/venv'
-SCRIPT_PATH = '/usr/local/bin/' + SCRIPT_NAME
-SCRIPT_PLUGIN_INSTALLER_PATH = '/usr/local/bin/' + SCRIPT_PLUGIN_INSTALLER_NAME
-SCRIPT_TRIGGER_EVENT_PATH = '/usr/local/bin/' + SCRIPT_TRIGGER_EVENT_NAME
+PLATFORM_PLUGINS_PATH = '/var/lib/' + PLATFORM_NAME + '/plugins'
+PLATFORM_VENV_PATH = '/var/lib/' + PLATFORM_NAME + '/venv'
+PLATFORM_PATH = '/usr/local/bin/' + PLATFORM_NAME
+PLATFORM_PLUGIN_INSTALLER_PATH = '/usr/local/bin/' + \
+                                 PLATFORM_PLUGIN_INSTALLER_COMMAND
+PLATFORM_EVENT_TRIGGER_PATH = '/usr/local/bin/' + PLATFORM_TRIGGER_EVENT_COMMAND
 
 
 def local(cmd, capture=True, env=None):
+    print('run command `{0}`'.format(cmd))
     try:
         stdout_and_stderr = subprocess.check_output(
             cmd,
@@ -70,7 +72,7 @@ def git_push(cwd, remote_repo, password):
             z.expect('s password:', timeout=1.0)
 
         z.sendline(password)
-        z.expect(pexpect.EOF, timeout=5.0)
+        z.expect(pexpect.EOF, timeout=10.0)
     except pexpect.TIMEOUT:
         print('\n- TIMEOUT - \n{0}\n'
               '----------------'.format(z.before.decode()))
@@ -114,8 +116,10 @@ def git_clone(cwd, remote_repo, password):
 
 class TestPlugin(unittest.TestCase):
     def test_example_simple_plugin(self):
-        local('make create_files')
+        local('make create_scripts')
+        local('make create_configs')
         local('make patch_shebang')
+        local('make create_user')
 
         z = local('wflow-install-plugin plugins/example_simple_plugin --force',
                   capture=True)
@@ -130,7 +134,7 @@ class TestPlugin(unittest.TestCase):
 
         self.assertIn('event example-bash', z)
         self.check_environments(z)
-        self.check_pwd(SCRIPT_PLUGINS_PATH + '/example_simple_plugin', z)
+        self.check_pwd(PLATFORM_PLUGINS_PATH + '/example_simple_plugin', z)
         self.check_path(z)
 
         z = local('wflow-trigger-event example-python3',
@@ -138,12 +142,14 @@ class TestPlugin(unittest.TestCase):
 
         self.assertIn('event example-python3', z)
         self.check_environments(z)
-        self.check_pwd(SCRIPT_PLUGINS_PATH + '/example_simple_plugin', z)
+        self.check_pwd(PLATFORM_PLUGINS_PATH + '/example_simple_plugin', z)
         self.check_path(z)
 
     def test_example_python_plugin(self):
-        local('make create_files')
+        local('make create_scripts')
+        local('make create_configs')
         local('make patch_shebang')
+        local('make create_user')
 
         z = local('wflow-install-plugin plugins/example_python_plugin --force',
                   capture=True)
@@ -158,18 +164,21 @@ class TestPlugin(unittest.TestCase):
 
         self.assertIn('event example', z)
         self.check_environments(z)
-        self.check_pwd(SCRIPT_PLUGINS_PATH + '/example_python_plugin', z)
+        self.check_pwd(PLATFORM_PLUGINS_PATH + '/example_python_plugin', z)
 
-        z = local('wflow printenv -v')
-        print(z)
+        z = local('wflow printenv')
         self.check_environments(z)
 
         with self.assertRaises(subprocess.CalledProcessError):
             local('wflow error')
 
     def test_git_plugin(self):
-        local('make create_files')
+        local('make create_scripts')
+        local('make create_configs')
         local('make patch_shebang')
+        local('make create_user')
+        local('make test_requirements')
+        local('wflow-deactivate-plugin docker_buildstep_plugin')
 
         passwd = 'qwer'
 
@@ -216,15 +225,17 @@ class TestPlugin(unittest.TestCase):
 
             self.assertEqual(z, project_name)
 
+        local('wflow-activate-plugin docker_buildstep_plugin')
+
     def check_environments(self, z):
-        self.assertIn('SCRIPT_NAME=' + SCRIPT_NAME, z)
-        self.assertIn('SCRIPT_PLUGIN_INSTALLER_NAME=' +
-                      SCRIPT_PLUGIN_INSTALLER_NAME, z)
-        self.assertIn('SCRIPT_TRIGGER_EVENT_NAME=' +
-                      SCRIPT_TRIGGER_EVENT_NAME, z)
-        self.assertIn('SCRIPT_DATA_PATH=' + SCRIPT_DATA_PATH, z)
-        self.assertIn('SCRIPT_PLUGINS_PATH=' + SCRIPT_PLUGINS_PATH, z)
-        self.assertIn('SCRIPT_VENV_PATH=' + SCRIPT_VENV_PATH, z)
+        self.assertIn('PLATFORM_NAME=' + PLATFORM_NAME, z)
+        self.assertIn('PLATFORM_PLUGIN_INSTALLER_COMMAND=' +
+                      PLATFORM_PLUGIN_INSTALLER_COMMAND, z)
+        self.assertIn('PLATFORM_TRIGGER_EVENT_COMMAND=' +
+                      PLATFORM_TRIGGER_EVENT_COMMAND, z)
+        self.assertIn('PLATFORM_DATA_PATH=' + PLATFORM_DATA_PATH, z)
+        self.assertIn('PLATFORM_PLUGINS_PATH=' + PLATFORM_PLUGINS_PATH, z)
+        self.assertIn('PLATFORM_VENV_PATH=' + PLATFORM_VENV_PATH, z)
 
     def check_pwd(self, pwd, z):
         self.assertIn('PWD=' + pwd, z)

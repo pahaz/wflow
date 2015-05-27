@@ -9,7 +9,6 @@ import time
 
 from wutil._six import text_type
 
-
 __author__ = 'pahaz'
 log = logging.getLogger(__name__)
 
@@ -78,7 +77,8 @@ def execute(
     :param init_env_script_use_cache: cache script environment
     :param shell: use shell (False = secure)
     :param stderr_to_stdout: redirect stderr to stdout
-    :param check_return_code_and_raise_error: raise exception if return code != 0
+    :param check_return_code_and_raise_error: raise exception
+    if return code != 0
     :param is_collecting_to_buf_stdout: collect stdout and return it
     :param is_collecting_to_buf_stderr: collect stderr and return it
     :param stdout: stdout pipe
@@ -117,7 +117,7 @@ def execute(
     _stdout = subprocess.PIPE
     _stderr = subprocess.STDOUT if stderr_to_stdout else subprocess.PIPE
 
-    log.debug('execute({0}, env={1!r}, shell={2}, cwd={3}) err={4} out={5}'
+    log.debug("execute('{0}', env={1!r}, shell={2}, cwd={3}) err={4} out={5}"
               .format(printable_command, env, shell, cwd, _stderr, _stdout))
     t0 = time.time()
 
@@ -125,7 +125,7 @@ def execute(
                           env=env,
                           shell=shell,
                           cwd=cwd,
-                            # stdin=subprocess.STD_INPUT_HANDLE,
+                          # stdin=subprocess.STD_INPUT_HANDLE,
                           stdout=_stdout,
                           stderr=_stderr) as proc:
         try:
@@ -155,11 +155,9 @@ def execute(
                 while proc.poll() is None:
                     r, _, _ = select.select(ds, [], [])
 
-                    print('select')
-
                     if proc.stdout in ds:
                         t = proc.stdout.read()
-                        log.info('t:' + repr(t))
+                        log.debug('out:' + repr(t))
                         if is_collecting_to_buf_stdout:
                             _buf_out.append(t)
                         if stdout:
@@ -167,29 +165,28 @@ def execute(
 
                     if proc.stderr in ds:
                         t = proc.stderr.read()
-                        log.info('t:' + repr(t))
+                        log.debug('err:' + repr(t))
                         if is_collecting_to_buf_stderr:
                             _buf_err.append(t)
                         if stderr:
                             stderr.write(t)
-
-
-
         except Exception:
             log.exception("Exception '{0}'".format(printable_command))
             proc.kill()
             proc.wait()
 
     return_code = proc.returncode
-    t1 = time.time()
-    log.debug('{4} <- {5} - simple_execute({0}, env={1!r}, shell={2}, cwd={3})'
-              .format(printable_command, env, shell, cwd, return_code,
-                      t1 - t0))
+    _out, _err = b''.join(_buf_out), b''.join(_buf_err)
+    dt = time.time() - t0
+    log.debug('simple_execute({0}, env={1!r}, shell={2}, cwd={3}) return {4} '
+              '[{5:0.4}s] \nSTDOUT: {6} \nSTDERR: {7}'
+              .format(printable_command, env, shell, cwd, return_code, dt,
+                      _out, _err))
     if return_code != 0 and check_return_code_and_raise_error:
         raise ReturnCodeError('"{0}" return code {1} != 0'
                               .format(printable_command, return_code))
 
-    return return_code, b''.join(_buf_out), b''.join(_buf_err)
+    return return_code, _out, _err
 
 
 def _execute_init_env_script(path, cache_path_env=True):
@@ -240,6 +237,7 @@ def _execute_init_env_script(path, cache_path_env=True):
 
     json_ = json_.decode('ascii')
     env = json.loads(json_)
+    # log.debug('init_env_script env={0}'.format(env))
 
     if 'PWD' in env:
         del env['PWD']

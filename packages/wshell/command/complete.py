@@ -2,9 +2,10 @@
 Copied form cliff with come changes.
 Bash completion for the CLI.
 """
-
+from __future__ import unicode_literals, print_function, generators, division
 import sys
 import logging
+
 from wutil._six import string_types
 from ..abc_command import AbstractCommand
 
@@ -175,6 +176,6 @@ class CompleteCommand(AbstractCommand):
 
         return 0
 
-    def run(self, run_command, sub_argv):
-        self._run_command = run_command
-        return super(CompleteCommand, self).run(run_command, sub_argv)
+    def run(self, command, sub_argv):
+        self._run_command = command
+        return super(CompleteCommand, self).run(command, sub_argv)

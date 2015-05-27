@@ -1,0 +1,14 @@
+from __future__ import unicode_literals, print_function, generators, division
+
+__author__ = 'pahaz'
+
+PLATFORM_PLUGINS_PATH_KEY = 'PLATFORM_PLUGINS_PATH'
+PLATFORM_VENV_PATH_KEY = 'PLATFORM_VENV_PATH'
+PLATFORM_DATA_PATH_KEY = 'PLATFORM_DATA_PATH'
+PLATFORM_USERNAME_KEY = 'PLATFORM_USERNAME'
+
+# git plugin
+REPO_DIR_NAME_KEY = 'REPO_DIR_NAME'
+DNS_NAME_KEY = 'DNS_NAME'
+
+# deploy

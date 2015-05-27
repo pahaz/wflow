@@ -11,7 +11,7 @@ class PrintEnvCommand(AbstractCommand):
     log = logging.getLogger(__name__)
 
     def take_action(self, parsed_args):
-        env = self.get_env()
+        env = self.env
         for k, v in env.items():
             self.write_message_for_user(":: {0}={1} ::".format(k, v))
 

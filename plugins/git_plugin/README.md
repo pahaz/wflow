@@ -1,32 +1,34 @@
 # git plugin #
 
-## git-receive ##
+Plugin for work with git CVS. Support two command: `git-receive-pack` and `git-upload-pack`
 
-    |----------|         |----------------------------|
+## git-receive-pack command ##
+
+    +----------+         +----------------------------+
     | (SOURCE) | --ssh-> | git plugin | (copy SOURCE) | 
-    | git push |         |----------------------------|
-    |----------|         |                            |
-                         | SIGNAL                     | SIGNAL
-                         | pre-git-receive-pack       | post-git-receive-pack
-                         ∨                            ∨
+    | git push |         +----------------------------+
+    +----------+                                |
+                                                | SIGNAL
+                                                | git-receive-pack
+                                                ∨    
 
 ### signals ###
 
- - pre-git-receive-pack
- - post-git-receive-pack
+ - *git-receive-pack* - trigger after source received
+ - *git-receive-pack context* : `dns_name`, `repo_local_path`
 
-## git-upload ##
+## git-upload-pack command ##
 
-    |-----------|         |----------------------------|
+    +-----------+         +----------------------------+
     | (SOURCE)  | <-ssh-- | git plugin | (copy SOURCE) | 
-    | git clone |         |----------------------------|
+    | git clone |         +----------------------------+
     | git pull  |
-    |-----------|         |                            |
-                          | SIGNAL                     | SIGNAL
-                          | pre-git-upload-pack        | post-git-upload-pack
-                          ∨                            ∨
+    +-----------+                                |
+                                                 | SIGNAL
+                                                 | git-upload-pack
+                                                 ∨
 
 ### signals ###
 
- - pre-git-upload-pack
- - post-git-upload-pack
+ - *git-upload-pack* - trigger after source uploaded
+ - *git-upload-pack context* : `dns_name`, `repo_local_path`

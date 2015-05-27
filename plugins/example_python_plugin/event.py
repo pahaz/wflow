@@ -9,27 +9,26 @@ def strenv(env):
     return '\n'.join(["{0}={1}".format(k, v) for k, v in env.items()])
 
 
-def simple_event_listener(**kwargs):
+def simple_event_listener(manager, env):
     # save current cwd
     _cwd = os.getcwd()
     os.chdir(__plugin_root__)
 
-    env = kwargs.get('env') or {}
-    NAME = env.get('SCRIPT_NAME')
-    PLUGIN_INSTALLER_NAME = env.get('SCRIPT_PLUGIN_INSTALLER_NAME')
-    TRIGGER_EVENT_NAME = env.get('SCRIPT_TRIGGER_EVENT_NAME')
-    USER_NAME = env.get('SCRIPT_USER_NAME')
-    DATA_PATH = env.get('SCRIPT_DATA_PATH')
-    PLUGINS_PATH = env.get('SCRIPT_PLUGINS_PATH')
-    VENV_PATH = env.get('SCRIPT_VENV_PATH')
+    NAME = env.get('PLATFORM_NAME')
+    PLUGIN_INSTALLER_COMMAND = env.get('PLATFORM_PLUGIN_INSTALLER_COMMAND')
+    TRIGGER_EVENT_COMMAND = env.get('PLATFORM_TRIGGER_EVENT_COMMAND')
+    USER_NAME = env.get('PLATFORM_USERNAME')
+    DATA_PATH = env.get('PLATFORM_DATA_PATH')
+    PLUGINS_PATH = env.get('PLATFORM_PLUGINS_PATH')
+    VENV_PATH = env.get('PLATFORM_VENV_PATH')
 
     print("event example ... ")
     print("event example ... ")
-    print("simple_event_listener(**{0!r})".format(kwargs))
+    print("simple_event_listener(**{0!r})".format(env.as_dict()))
     print(strenv(env))
     print("PWD=" + __plugin_root__)
     print('EVENT!',
-          NAME, PLUGIN_INSTALLER_NAME, TRIGGER_EVENT_NAME, USER_NAME,
+          NAME, PLUGIN_INSTALLER_COMMAND, TRIGGER_EVENT_COMMAND, USER_NAME,
           DATA_PATH, PLUGINS_PATH, VENV_PATH)
     print('hook ... example ...')
     print('hook ... example ...')

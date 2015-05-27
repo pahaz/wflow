@@ -1,7 +1,10 @@
+from __future__ import unicode_literals, print_function, generators, division
 import shlex
 import sys
 import itertools
 from cmd import Cmd
+
+from wutil.execute3 import execute, BaseExecuteCommandError
 
 __author__ = 'pahaz'
 
@@ -15,10 +18,10 @@ class InteractiveMode(Cmd):
     app_cmd_header = "Application commands (type help <topic>):"
     exclude_commands = ['complete', 'help']
 
-    def __init__(self, app_core, command_manager, stdin=None, stdout=None):
-        self.app_core = app_core
-        self.prompt = '(%s) ' % app_core.NAME
+    def __init__(self, prompt, command_manager, env, stdin=None, stdout=None):
+        self.prompt = prompt
         self.command_manager = command_manager
+        self.env = env
         super(InteractiveMode, self).__init__('tab', stdin, stdout)
 
     def cmdloop(self, intro=None):
@@ -34,7 +37,7 @@ class InteractiveMode(Cmd):
         # since it already has the logic for executing
         # the subcommand.
         line_parts = shlex.split(line)
-        self.app_core.run_command(line_parts)
+        self.command_manager.run_command(line_parts, self.env)
 
     def complete(self, text, state):
         return super(InteractiveMode, self).complete(text, state)
@@ -94,5 +97,11 @@ class InteractiveMode(Cmd):
     def do_EOF(self, line):
         """exit"""
         sys.exit()
+
+    def do_run(self, line):
+        try:
+            execute(line)
+        except (BaseExecuteCommandError, OSError) as e:
+            print(e)
 
     do_q = do_quit = do_exit = do_EOF

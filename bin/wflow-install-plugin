@@ -7,14 +7,16 @@ import sys
 import argparse
 import shutil
 
-from wutil.env import load_env
-from wutil.file import set_executable
+from wutil.fs import set_executable
 from wutil.execute import simple_execute
+from wutil.env_stack import load_env_stack
+from wutil.env_keys import PLATFORM_VENV_PATH_KEY, PLATFORM_PLUGINS_PATH_KEY
 
 
 __author__ = 'pahaz'
-__version__ = '0.2.1'
-INSTALL_SCRIPT_FILE_NAME = 'install'
+__version__ = '0.2.7'
+INSTALL_PLATFORM_FILE_NAME = 'install'
+CONFIG_FILENAME = __file__.split('-')[0] + '.ini'
 
 
 class InstallError(Exception):
@@ -26,10 +28,9 @@ def is_root_access():
     return os.geteuid() == 0
 
 
-def do_install_plugin(env, installed_plugins, new_plugin_path,
-                      force_install):
-    plugin_path = env.SCRIPT_PLUGINS_PATH
-    venv_path = env.SCRIPT_VENV_PATH
+def do_install_plugin(env, installed_plugins, new_plugin_path, force_install):
+    plugin_path = env[PLATFORM_PLUGINS_PATH_KEY]
+    venv_path = env[PLATFORM_VENV_PATH_KEY]
 
     plugin_name = os.path.basename(new_plugin_path)
     plugin_new_store_path = os.path.join(plugin_path, plugin_name)
@@ -44,15 +45,25 @@ def do_install_plugin(env, installed_plugins, new_plugin_path,
                          .format(plugin_name, sys.argv[0]))
         return
 
+    # check if is deactivated
+    if is_plugin_with_same_name_exists:
+        base, name = os.path.split(new_plugin_path)
+        deactivated_plugin = os.path.join(base, '.' + name)
+        if os.path.exists(deactivated_plugin):
+            print("    ----> cleaning: {0}".format(deactivated_plugin))
+            shutil.rmtree(deactivated_plugin)
+
     print("    ----> installing: {0}".format(new_plugin_path))
 
-    install_file = os.path.join(new_plugin_path, INSTALL_SCRIPT_FILE_NAME)
+    install_file = os.path.join(new_plugin_path, INSTALL_PLATFORM_FILE_NAME)
     if os.path.exists(install_file):
         print("    ----> run: {0}".format(install_file))
         set_executable(install_file)
 
         # Windows problem
         venv_activate_path = os.path.join(venv_path, 'bin', 'activate')
+        # TODO: check print stderr info
+        # TODO: use execute3
         ret = simple_execute(
             './install',
             env=env,
@@ -64,8 +75,9 @@ def do_install_plugin(env, installed_plugins, new_plugin_path,
                                "{0} != 0".format(ret, install_file))
 
     if is_plugin_with_same_name_exists and not is_plugin_self_dir:
-        print("    ----> cleaning: {0}".format(plugin_new_store_path))
-        shutil.rmtree(plugin_new_store_path)
+        if os.path.exists(plugin_new_store_path):
+            print("    ----> cleaning: {0}".format(plugin_new_store_path))
+            shutil.rmtree(plugin_new_store_path)
 
     if not is_plugin_self_dir:
         print("    ----> copy plugin: {0} -> {1}".format(
@@ -76,14 +88,7 @@ def do_install_plugin(env, installed_plugins, new_plugin_path,
     print("    ----> done")
 
 
-def main(argv):
-    env = load_env(__file__ + '.ini')
-
-    directory_for_storing_plugins = env.SCRIPT_PLUGINS_PATH
-    directory_for_storing_data = env.SCRIPT_DATA_PATH
-    directory_for_storing_venv = env.SCRIPT_VENV_PATH
-    owner_username = env.SCRIPT_USER_NAME
-
+def parse_args(argv):
     parser = argparse.ArgumentParser(description="Plugin install tool")
     parser.add_argument('-l', '--print-list-installed-plugins',
                         action='store_true')
@@ -93,6 +98,13 @@ def main(argv):
                         help="plugin directory")
 
     options = parser.parse_args(argv)
+    return options
+
+
+def main(argv):
+    env = load_env_stack(CONFIG_FILENAME)
+    platform_plugins_path = env[PLATFORM_PLUGINS_PATH_KEY]
+    options = parse_args(argv)
 
     installed_plugins = []
 
@@ -100,18 +112,26 @@ def main(argv):
     force_install = options.force
     do_print_installed_plugins = options.print_list_installed_plugins
 
-    for new_plugin in os.listdir(directory_for_storing_plugins):
-        _path = os.path.normpath(os.path.join(directory_for_storing_plugins,
+    for new_plugin in os.listdir(platform_plugins_path):
+        _path = os.path.normpath(os.path.join(platform_plugins_path,
                                               new_plugin))
         if os.path.isdir(_path):
-            installed_plugins.append(new_plugin)
+            if new_plugin.startswith('.'):
+                installed_plugins.append(new_plugin[1:])
+            else:
+                installed_plugins.append(new_plugin)
 
     if do_print_installed_plugins:
-        print('\n'.join(installed_plugins))
+        print("INSTALLED PLUGINS")
+        y = [x for x in os.listdir(platform_plugins_path)
+             if not x.startswith('.')]
+        n = [x[1:] for x in os.listdir(platform_plugins_path)
+             if x.startswith('.')]
+        print("ACTIVATED: " + ', '.join(y))
+        print('DEACTIVATED: ' + ', '.join(n))
         return 0
 
     if not new_plugins:
-        parser.print_usage()
         sys.stderr.write("error: no plugins for installing\n")
         return 2
 
@@ -123,12 +143,17 @@ def main(argv):
 
     for new_plugin in new_plugins:
         new_plugin_path = os.path.normpath(new_plugin)
+        base, name = os.path.split(new_plugin_path)
         if not os.path.exists(new_plugin_path):
             sys.stderr.write("warning: plugin {0} not exists (skip)\n"
                              .format(new_plugin_path))
             continue
         if not os.path.isdir(new_plugin_path):
             sys.stderr.write("warning: path {0} is not a directory (skip)\n"
+                             .format(new_plugin_path))
+            continue
+        if name.startswith('.'):
+            sys.stderr.write("warning: path {0} name starts with '.' (skip)\n"
                              .format(new_plugin_path))
             continue
         try:

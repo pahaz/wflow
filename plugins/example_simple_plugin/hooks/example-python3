@@ -9,19 +9,19 @@ if __name__ == "__main__":
     # cd to plugin root
     os.chdir(__plugin_root__)
 
-    NAME = os.environ.get('SCRIPT_NAME')
-    PLUGIN_INSTALLER_NAME = os.environ.get('SCRIPT_PLUGIN_INSTALLER_NAME')
-    TRIGGER_EVENT_NAME = os.environ.get('SCRIPT_TRIGGER_EVENT_NAME')
-    USER_NAME = os.environ.get('SCRIPT_USER_NAME')
-    DATA_PATH = os.environ.get('SCRIPT_DATA_PATH')
-    PLUGINS_PATH = os.environ.get('SCRIPT_PLUGINS_PATH')
-    VENV_PATH = os.environ.get('SCRIPT_VENV_PATH')
+    NAME = os.environ.get('PLATFORM_NAME')
+    PLUGIN_INSTALLER_COMMAND = os.environ.get('PLATFORM_PLUGIN_INSTALLER_COMMAND')
+    TRIGGER_EVENT_COMMAND = os.environ.get('PLATFORM_TRIGGER_EVENT_COMMAND')
+    USER_NAME = os.environ.get('PLATFORM_USERNAME')
+    DATA_PATH = os.environ.get('PLATFORM_DATA_PATH')
+    PLUGINS_PATH = os.environ.get('PLATFORM_PLUGINS_PATH')
+    VENV_PATH = os.environ.get('PLATFORM_VENV_PATH')
 
     print("event example-python3 ... ")
     print("event example-python3 ... ")
     print(os.system("printenv"))
     print('EVENT!',
-          NAME, PLUGIN_INSTALLER_NAME, TRIGGER_EVENT_NAME, USER_NAME,
+          NAME, PLUGIN_INSTALLER_COMMAND, TRIGGER_EVENT_COMMAND, USER_NAME,
           DATA_PATH, PLUGINS_PATH, VENV_PATH)
     print('hook ... example ...')
     print('hook ... example ...')

@@ -1,4 +1,8 @@
+from __future__ import unicode_literals, print_function, generators, division
+import logging
 import threading
+
+from wutil.env_stack import EnvStack
 
 __author__ = 'pahaz'
 
@@ -14,14 +18,16 @@ class EventManager(object):
         import logging
 
 
-        def woow_printer_listener(**kwargs):
+        def printer_listener(env):
             print("Woow simple-event EVENT!!")
 
 
         def load(command_manager, event_manager, env):
-            event_manager.add_event_listener('simple-event', woow_printer_listener)
+            event_manager.add_event_listener('print-event', printer_listener)
     
     """
+    log = logging.getLogger(__name__)
+
     def __init__(self):
         """
         Create a new signal.
@@ -46,10 +52,11 @@ class EventManager(object):
 
         """
         import inspect
-        if not callable(receiver):
-            raise TypeError("Signal receivers must be callable.")
 
-        # Check for **kwargs
+        if not callable(receiver):
+            raise TypeError("event listener must be callable")
+
+        # Check receiver signature.
         # Not all callables are inspectable with getargspec, so we'll
         # try a couple different ways but in the end fall back on assuming
         # it is -- we don't want to prevent registration of valid but weird
@@ -61,19 +68,38 @@ class EventManager(object):
                 argspec = inspect.getargspec(receiver.__call__)
             except (TypeError, AttributeError):
                 argspec = None
-        if not argspec:
-            raise TypeError("Unknown receiver argspec.")
 
-        if argspec.keywords is None:
-                raise TypeError("Event receivers must accept "
-                                "keyword arguments (**kwargs).")
+        if argspec is None:
+            raise TypeError("No receiver specification")
+
+        args = argspec.args
+        if len(args) > 3:
+            raise TypeError("Invalid receiver specification. "
+                            "More then two positional args. "
+                            "`callable(manager, env)` required")
+
+        has_wrong_args = args not in (['manager', 'env'],
+                                      ['self', 'manager', 'env'],
+                                      ['cls', 'manager', 'env'])
+        has_kwargs = argspec.keywords is not None
+        has_args = argspec.varargs is not None
+        has_defaults = argspec.defaults is not None
+
+        if has_args or has_kwargs or has_defaults or has_wrong_args:
+            raise TypeError("Invalid receiver specification. "
+                            "`callable(manager, env)`, "
+                            "`callable(self, manager, env)` or "
+                            "`callable(cls, manager, env)` required")
+
+        self.log.info('add listener {0} for event {1}'
+                      .format(receiver, event_name))
 
         with self._lock:
             event_receivers = self._receivers.get(event_name, [])
             event_receivers.append(receiver)
             self._receivers[event_name] = event_receivers
 
-    def rm_event_listener(self, event_name, receiver):
+    def remove_event_listener(self, event_name, receiver):
         """
         Disconnect receiver from event.
 
@@ -90,6 +116,9 @@ class EventManager(object):
                 dispatch_uid is specified.
 
         """
+        self.log.info('remove listener {0} for event {1}'
+                      .format(receiver, event_name))
+
         with self._lock:
             event_receivers = self._receivers.get(event_name)
             if not event_receivers:
@@ -103,7 +132,7 @@ class EventManager(object):
     def has_event_listener(self, event_name, receiver):
         return receiver in self._receivers.get(event_name, [])
 
-    def trigger_event(self, event_name, **kwargs):
+    def trigger_event(self, event_name, env_stack, env_extra_layer=None):
         """
         Trigger event from all connected receivers.
 
@@ -112,17 +141,45 @@ class EventManager(object):
             event_name
                 Trigged event name.
 
-        Returns a list of tuple pairs [(receiver, response), ... ].
+        Returns a list of tuple triples [(receiver, result, error), ... ].
         """
-        responses = []
+        if not isinstance(env_stack, EnvStack):
+            raise TypeError('Invalid env type. EnvStack instance required')
 
+        self.log.info('trigger {0} event extra={1}'
+                      .format(event_name, env_extra_layer))
+
+        responses = []
         event_receivers = self._receivers.get(event_name)
         if not event_receivers:
+            self.log.debug('no receivers for event {0}'.format(event_name))
             return responses
 
+        if env_extra_layer:
+            try:
+                env_stack.push(env_extra_layer)
+            except TypeError as e:
+                self.log.debug('push env_extra_layer error')
+                raise TypeError('Invalid env extra layer. ' + str(e))
+
         for receiver in event_receivers:
-            rez = receiver(**kwargs)
-            responses.append((receiver, rez))
+            try:
+                rez = receiver(self, env_stack)
+            except Exception as e:
+                error_msg = 'receiver {0} error: {1} ({2})' \
+                    .format(receiver, e, type(e).__name__)
+                self.log.error(error_msg)
+                self.log.debug(error_msg, exc_info=True)
+                err, rez = e, None
+            else:
+                self.log.info('receiver {0} return: {1}'.format(receiver, rez))
+                err, rez = None, rez
+
+            responses.append((receiver, rez, err))
+
+        if env_extra_layer:
+            env_stack.pop()
+
         return responses
 
     def listen(self, *event_names):
@@ -130,16 +187,18 @@ class EventManager(object):
         A decorator for connecting receivers to events.
 
             @listen("super-important-event")
-            def signal_receiver(**kwargs):
+            def signal_receiver(env):
                 ...
 
             @listen("super-important-event", "super-event-2")
-            def signals_receiver(**kwargs):
+            def signals_receiver(env):
                 ...
 
         """
+
         def _decorator(func):
             for event_name in event_names:
                 self.add_event_listener(event_name, func)
             return func
+
         return _decorator

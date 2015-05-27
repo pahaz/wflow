@@ -1,27 +1,36 @@
+from __future__ import unicode_literals, print_function, generators, division
 import argparse
 import os
+import random
 import shlex
 import logging
+import string
 import sys
+import time
 
 from .interactive import InteractiveMode
 from .command.complete import CompleteCommand
 from .command.help import HelpCommand, HelpAction
-
+from wshell.module import load_managers_from_plugins
+from wutil.env_keys import PLATFORM_PLUGINS_PATH_KEY, PLATFORM_VENV_PATH_KEY, \
+    PLATFORM_USERNAME_KEY
+from wutil.env_keys import PLATFORM_DATA_PATH_KEY
+from wutil.env_stack import load_env_stack
+from wshell.event_manager import EventManager
+from wshell.command_manager import CommandManager
+from wutil.fs import read_content
 
 __author__ = 'pahaz'
 
 
 class Core(object):
+    """ Core class.
     """
-    Core class.
-    """
-    _RUN_SUBCOMMAND__ERROR_RETURN_CODE = 1
-    _RUN_SUBCOMMAND__COMMAND_NOT_FOUND_RETURN_CODE = 2
-    _RUN__INITIALIZE_ERROR_RETURN_CODE = 3
+    INITIALIZE_ERROR_RETURN_CODE = 3
 
-    LOG__DEFAULT_LOG_LEVEL = 0
+    LOG__CONSOLE_LOG_LEVEL = 0
     LOG__CONSOLE_MESSAGE_FORMAT = '%(message)s'
+
     LOG__LOG_FILE_MESSAGE_FORMAT = \
         '[%(asctime)s] %(levelname)-8s %(name)s %(message)s'
 
@@ -29,7 +38,7 @@ class Core(object):
     DESCRIPTION = "Core class"
     VERSION = "0.0"
 
-    LOG = logging.getLogger(NAME)
+    log = logging.getLogger(NAME)
     LOG_LEVELS = {
         -1: logging.ERROR,
         0: logging.WARNING,
@@ -37,10 +46,40 @@ class Core(object):
         2: logging.DEBUG
     }
 
-    def __init__(self,
-                 command_manager, event_manager, env,
-                 interactive_app_factory=InteractiveMode,
-                 **kwargs):
+    def __init__(self, config_file):
+        """
+        :param command_manager: Command manager class
+        :type command_manager: wshell.command_manager.CommandManager
+        :param event_manager: Event manager class
+        :type event_manager: wshell.event_manager.EventManager
+        :param env: EnvStack class
+        :type env: wutil.env.EnvStack
+        """
+
+        session_id = _make_log_session_id()
+        self.log_file = log_file = "/tmp/{0}.log".format(session_id)
+
+        self.configure_logging(log_file)
+
+        self.log.warning('::: SESSION {0} :::'.format(session_id))
+
+        env = load_env_stack(config_file)
+        platform_plugins_path = env[PLATFORM_PLUGINS_PATH_KEY]
+        platform_data_path = env[PLATFORM_DATA_PATH_KEY]
+        platform_venv_path = env[PLATFORM_VENV_PATH_KEY]
+        platform_username = env[PLATFORM_USERNAME_KEY]
+
+        event_manager = EventManager()
+        command_manager = CommandManager(event_manager)
+
+        load_managers_from_plugins(
+            platform_plugins_path,
+            platform_venv_path,
+            command_manager,
+            event_manager,
+            env
+        )
+
         self.command_manager = command_manager
         self.command_manager.add_command(HelpCommand)
         self.command_manager.add_command(CompleteCommand)
@@ -49,10 +88,9 @@ class Core(object):
 
         self.env = env
 
-        self.interactive_app_factory = interactive_app_factory
         self.parser = self.build_option_parser()
+        self._login_shell_command_support_fix_parser()
         self.interactive_mode = False
-        self.interactive_app = None
 
     def build_option_parser(self, argparse_kwargs=None):
         description, version = self.DESCRIPTION, self.VERSION
@@ -68,41 +106,119 @@ class Core(object):
             version='%(prog)s {0}'.format(version),
         )
         parser.add_argument(
-            '-v', '--verbose',
-            action='count',
-            dest='verbose_level',
-            default=self.LOG__DEFAULT_LOG_LEVEL,
-            help='Increase verbosity of output. Can be repeated.',
-        )
-        parser.add_argument(
-            '--log-file',
-            action='store',
-            default=None,
-            help='Specify a file to log output. Disabled by default.',
-        )
-        parser.add_argument(
-            '-q', '--quiet',
-            action='store_const',
-            dest='verbose_level',
-            const=-1,
-            help='suppress output except errors',
-        )
-        parser.add_argument(
             '-h', '--help',
             action=HelpAction,
             nargs=0,
             default=self,  # tricky
             help="show this help message and exit",
         )
-        parser.add_argument(
-            '--debug',
-            default=False,
-            action='store_true',
-            help='show tracebacks on errors',
+        return parser
+
+    def configure_logging(self, log_file):
+        """ Create logging handlers for any log output.
+        """
+        root_logger = logging.getLogger('')
+        root_logger.setLevel(logging.DEBUG)
+
+        # Set up logging to a file
+        if log_file:
+            file_handler = logging.FileHandler(filename=log_file)
+            formatter = logging.Formatter(self.LOG__LOG_FILE_MESSAGE_FORMAT)
+            file_handler.setFormatter(formatter)
+            root_logger.addHandler(file_handler)
+
+        # Always send higher-level messages to the console via stderr
+        console = logging.StreamHandler()
+        console_level = self.LOG_LEVELS.get(self.LOG__CONSOLE_LOG_LEVEL)
+        console.setLevel(console_level)
+        formatter = logging.Formatter(self.LOG__CONSOLE_MESSAGE_FORMAT)
+        console.setFormatter(formatter)
+        root_logger.addHandler(console)
+
+    def run(self, argv):
+        """ Equivalent to the main program for the application.
+
+        :param argv: input arguments and options
+        :paramtype argv: list of str
+        """
+        self._collect_debug_info()
+        try:
+            self.options, remainder = self.parser.parse_known_args(argv)
+            self._login_shell_command_support_fix_run_argv(remainder)
+            self.interactive_mode = not remainder
+            self.initialize(remainder)
+        except (Exception, KeyboardInterrupt) as err:
+            self.log.error(err)
+            self.log.debug(err, exc_info=True)
+            return self.INITIALIZE_ERROR_RETURN_CODE
+
+        try:
+            retcode = self.run_interactive_mode() if self.interactive_mode \
+                else self.run_command(remainder)
+        except KeyboardInterrupt:
+            self.log.error("INTERRUPTED!")
+            raise
+        finally:
+            self._debug_info()
+        return retcode
+
+    def run_interactive_mode(self):
+        interactive_mode = InteractiveMode(
+            '(%s) ' % self.NAME,
+            self.command_manager,
+            self.env,
         )
 
+        interactive_mode.cmdloop()
+        return 0
+
+    def run_command(self, argv):
+        # self.pre_run_command(argv)
+        return_code, error = self.command_manager.run_command(argv, self.env)
+        # self.post_run_command(argv, return_code, error)
+        return return_code
+
+    def initialize(self, argv):
+        self.log.debug('initialize `{0}`'.format(' '.join(argv)))
+
+    # def pre_run_command(self, argv):
+    # self.log.debug('pre_run_command `{0}`'.format(' '.join(argv)))
+    #
+    # def post_run_command(self, argv, command_return_code, command_error):
+    #     self.log.debug('post_run_command `{0}`'.format(' '.join(argv)))
+
+    def _debug_info(self):
+        self.log.debug("write user debug info")
+        if self._debug_info_deploy_app_name:
+            # echo "127.0.0.1" > "$PLATFORM_DATA_PATH/$APP/HOST"
+            # echo "$PORT" > "$PLATFORM_DATA_PATH/$APP/PORT"
+            # echo "$hostname" > "$PLATFORM_DATA_PATH/$APP/HOSTNAME"
+            app_path = os.path.join(self.env[PLATFORM_DATA_PATH_KEY],
+                               self._debug_info_deploy_app_name)
+            PORT = read_content(os.path.join(app_path, "PORT"))
+            HOST = read_content(os.path.join(app_path, "HOST"))
+            HOSTNAME = read_content(os.path.join(app_path, "HOSTNAME"))
+            extra_info = """
+        TEST DEPLOY RESULT FOR {0}
+         - curl -H 'Host: {hn}' http://localhost:80/
+         - curl http://{h}:{p}/
+
+            """.format(self._debug_info_deploy_app_name, p=PORT, h=HOST,
+                       hn=HOSTNAME)
+        else:
+            extra_info = ''
+
+        self.log.warning("""
+
+        HI, IF YOU WANT SEE MORE DEBUG INFORMATION SEE LOG FILE: {0}
+         - tail {0}
+         - tail -n 50 {0}
+         - cat {0}
+        \n""".format(self.log_file) + extra_info)
+
+    def _login_shell_command_support_fix_parser(self):
         # -c uses for login shell
-        parser.add_argument(
+        self.parser.add_argument(
             '-c', '--command',
             nargs='?',
             action='store',
@@ -110,154 +226,27 @@ class Core(object):
             help="Run command and exit. (deprecated) "
                  "Used for login shell command execution."
         )
-        return parser
 
-    def configure_logging(self):
-        """Create logging handlers for any log output.
-        """
-        root_logger = logging.getLogger('')
-        root_logger.setLevel(logging.DEBUG)
-
-        # Set up logging to a file
-        if self.options.log_file:
-            file_handler = logging.FileHandler(
-                filename=self.options.log_file,
-            )
-            formatter = logging.Formatter(self.LOG__LOG_FILE_MESSAGE_FORMAT)
-            file_handler.setFormatter(formatter)
-            root_logger.addHandler(file_handler)
-
-        # Always send higher-level messages to the console via stderr
-        console = logging.StreamHandler()
-        console_level = self.LOG_LEVELS.get(self.options.verbose_level,
-                                            logging.DEBUG)
-        console.setLevel(console_level)
-        formatter = logging.Formatter(self.LOG__CONSOLE_MESSAGE_FORMAT)
-        console.setFormatter(formatter)
-        root_logger.addHandler(console)
-
-    def _login_shell_command_argv_support(self, argv):
+    def _login_shell_command_support_fix_run_argv(self, argv):
         # if -c or --command
         if self.options.command:
             command = shlex.split(self.options.command)
             argv[:] = command + argv
 
-    def run(self, argv):
-        """Equivalent to the main program for the application.
+    def _collect_debug_info(self):
+        self._debug_info_deploy_app_name = None
 
-        :param argv: input arguments and options
-        :paramtype argv: list of str
-        """
-        try:
-            self.options, remainder = self.parser.parse_known_args(argv)
-            self.configure_logging()
-            self._login_shell_command_argv_support(remainder)
-            self.interactive_mode = not remainder
-            self.initialize(remainder)
-        except Exception as err:
-            if hasattr(self, 'options'):
-                debug = self.options.debug
-            else:
-                debug = True
-            if debug:
-                self.LOG.exception(err)
-                raise
-            else:
-                self.LOG.error(err)
-            return self._RUN__INITIALIZE_ERROR_RETURN_CODE
+        def _collect_app_name_for_core_debug_info(manager, env):
+            self._debug_info_deploy_app_name = env['APP']
 
-        return self.run_interactive_mode() if self.interactive_mode else \
-            self.run_command(remainder)
+        self.event_manager.add_event_listener(
+            'deploy', _collect_app_name_for_core_debug_info
+        )
 
-    def run_interactive_mode(self):
-        self.interactive_app = self.interactive_app_factory(
-            self,
-            self.command_manager)
-        self.interactive_app.cmdloop()
-        return 0
 
-    def run_command(self, argv):
-        try:
-            command_factory, command_name, command_argv = \
-                self.command_manager.find_command(argv)
-        except ValueError as e:
-            if self.options.debug:
-                self.LOG.exception(e)
-            else:
-                self.LOG.error(e)
-            return self._RUN_SUBCOMMAND__COMMAND_NOT_FOUND_RETURN_CODE
-
-        command = command_factory(
-            self.event_manager, self.command_manager, self.env)
-
-        result = self._RUN_SUBCOMMAND__ERROR_RETURN_CODE
-        error = None
-        try:
-            # pre run
-            self.LOG.debug('pre_run_command `{0}`'
-                           .format(command_name))
-            self.pre_run_command(command)
-
-            # trigger event
-            pre_run_event_name = 'pre-' + command_name
-            self.LOG.debug('trigger_event `{0}`'.format(pre_run_event_name))
-            event_result_list = self.event_manager.trigger_event(
-                pre_run_event_name,
-                command=command,
-                env=self.env)
-            if event_result_list:
-                self.LOG.debug('event `{1}` results: {0}'
-                               .format(event_result_list, pre_run_event_name))
-
-            # run
-            run_command_full_name = (command_name
-                                     if self.interactive_mode
-                                     else ' '.join([self.NAME, command_name]))
-            result = command.run(run_command_full_name, command_argv)
-        except Exception as e:
-            error = e  # use in finally
-            msg = "Caught exception: {0}".format(e)
-            if self.options.debug:
-                self.LOG.exception(msg)
-            else:
-                self.LOG.error(msg)
-
-            self.LOG.debug('Debug error: {0}'.format(error), exc_info=True)
-        finally:
-            try:
-                # post run
-                self.LOG.debug('post_run_command `{0}`'.format(command_name))
-                self.post_run_command(command, result, error)
-
-                # trigger event
-                name = command.get_name()
-                event_name = 'post-' + name
-                self.LOG.debug('trigger_event `{0}`'.format(event_name))
-                event_result_list = self.event_manager.trigger_event(
-                    event_name,
-                    command=command,
-                    result=result,
-                    error=error,
-                    env=self.env)
-                if event_result_list:
-                    self.LOG.debug('event `{1}` results: {0}'
-                                   .format(event_result_list, event_name))
-
-            except Exception as e:
-                msg = "Could not clean up: {0}".format(e)
-                if self.options.debug:
-                    self.LOG.exception(msg)
-                else:
-                    self.LOG.error(msg)
-
-                self.LOG.debug('Debug error: {0}'.format(error), exc_info=True)
-        return result
-
-    def initialize(self, argv):
-        pass
-
-    def pre_run_command(self, command):
-        pass
-
-    def post_run_command(self, command, result, error):
-        pass
+def _make_log_session_id():
+    chars = string.ascii_uppercase + string.digits
+    rnd = ''.join([random.choice(chars) for _ in range(4)])
+    timestamp = time.strftime("%Y%m%d%HH%MM%SS")
+    session_id = "W{0}{1}".format(timestamp, rnd)
+    return session_id

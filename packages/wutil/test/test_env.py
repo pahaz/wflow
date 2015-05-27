@@ -1,16 +1,17 @@
-from copy import deepcopy
-import unittest
 import collections
-from wutil.env import Env, is_hashable_type
+
+from wutil.env import EnvStackLayer, is_hashable_type
 from wutil.test import BaseTestCase
+
 
 __author__ = 'pahaz'
 
 
 class TestEnv(BaseTestCase):
     def test_default_env(self):
-        e = Env({'OK': 22})
-        self.assertEqual(e.OK, 22)
+        e = EnvStackLayer({'OK': 22})
+        with self.assertRaises(AttributeError):
+            e.OK
         self.assertEqual(e['OK'], 22)
 
         with self.assertRaises(AttributeError):
@@ -31,59 +32,50 @@ class TestEnv(BaseTestCase):
         self.assertIn('OK', e)
         self.assertIsInstance(e, collections.Mapping)
 
-    def test_suppress_error(self):
-        e = Env({'OK': 22}, raise_attribute_error=False)
-        self.assertEqual(e.OK, 22)
-        self.assertIs(e.SECRET, None)
-
     def test_items(self):
-        e = Env({'OK': 22, 'NOT_OK': 33})
+        e = EnvStackLayer({'OK': 22, 'NOT_OK': 33})
         z = e.items()
         self.assertIn(('OK', 22), z)
         self.assertIn(('NOT_OK', 33), z)
 
     def test_iter(self):
-        e = Env({'OK': 22, 'NOT_OK': 33})
+        e = EnvStackLayer({'OK': 22, 'NOT_OK': 33})
         i = iter(e)
         self.assertEqual(set(i), {'OK', 'NOT_OK'})
 
     def test_get(self):
-        e = Env({'OK': 22, 'NOT_OK': None})
-        self.assertEqual(e.OK, 22)
-        with self.assertRaises(AttributeError):
-            self.assertIs(e.SECRET, None)
-
+        e = EnvStackLayer({'OK': 22, 'NOT_OK': None})
         self.assertEqual(e.get('OK'), 22)
         self.assertEqual(e.get('NOT_OK'), None)
         self.assertEqual(e.get('SECRET'), None)
 
     def test_immutable(self):
-        e = Env({'OK': 22})
+        e = EnvStackLayer({'OK': 22})
 
         with self.assertRaises(TypeError):
-            e.OK = 2
+            e['OK'] = 2
         with self.assertRaises(TypeError):
-            e.Z = 2
+            e['Z'] = 2
 
         with self.assertRaises(TypeError):
-            del e.OK
+            del e['OK']
         with self.assertRaises(TypeError):
-            del e.Z
+            del e['Z']
 
         with self.assertRaises(TypeError):
             e.get = lambda z: z
 
     def test_as_dict(self):
         z = (2, 3, 4, 5, 6)
-        e = Env({'OK': z})
+        e = EnvStackLayer({'OK': z})
         d = e.as_dict()
         zz = d['OK']
         self.assertEqual(z, zz)
 
     def test_raise_unhashable(self):
-        for x in ([], set()):
+        for x in ([], set(), {}):
             with self.assertRaises(TypeError):
-                e = Env({'OK': x})
+                e = EnvStackLayer({'OK': x})
 
     def test_is_simple_type(self):
         for x in (1, 1.2, 'qwe'):

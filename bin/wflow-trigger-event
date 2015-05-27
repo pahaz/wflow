@@ -1,0 +1,81 @@
+#!/usr/bin/env python3
+# coding=utf-8
+from __future__ import unicode_literals, print_function, absolute_import, \
+    generators, with_statement, nested_scopes, division
+import argparse
+import sys
+
+from wshell.command_manager import CommandManager
+from wshell.event_manager import EventManager
+from wshell.module import load_managers_from_plugins
+from wutil.env_stack import load_env_stack
+from wutil.env_keys import PLATFORM_USERNAME_KEY, PLATFORM_VENV_PATH_KEY, \
+    PLATFORM_DATA_PATH_KEY, PLATFORM_PLUGINS_PATH_KEY
+
+
+__author__ = 'pahaz'
+__version__ = '0.2.5'
+CONFIG_FILENAME = __file__.split('-')[0] + '.ini'
+
+
+def detect_type(str_value):
+    try:
+        v = int(str_value)
+    except ValueError:
+        try:
+            v = float(str_value)
+        except ValueError:
+            v = str_value
+
+    return v
+
+
+class StoreNameValuePair(argparse.Action):
+    def __call__(self, parser, namespace, values, option_string=None):
+        # print(namespace, values)
+        dict_ = {}
+        for value in values:
+            n, v = value.split('=')
+            dict_[n] = detect_type(v)
+        setattr(namespace, self.dest, dict_)
+
+
+def main(argv):
+    parser = argparse.ArgumentParser(description="Trigger event tool")
+    parser.add_argument("name", help="event name")
+    parser.add_argument("args", nargs="*", action=StoreNameValuePair,
+                        help="key=value pair (ex: AAA=\"a a a\" B=2 C=1.2)")
+    args = parser.parse_args(argv)
+
+    env = load_env_stack(CONFIG_FILENAME)
+
+    platform_plugins_path = env[PLATFORM_PLUGINS_PATH_KEY]
+    platform_data_path = env[PLATFORM_DATA_PATH_KEY]
+    platform_venv_path = env[PLATFORM_VENV_PATH_KEY]
+    platform_username = env[PLATFORM_USERNAME_KEY]
+
+    event_manager = EventManager()
+    command_manager = CommandManager(event_manager)
+
+    load_managers_from_plugins(
+        platform_plugins_path,
+        platform_venv_path,
+        command_manager,
+        event_manager,
+        env
+    )
+
+    event_arguments = ', '.join(map(lambda v: "{0}={1}".format(v[0], v[1]),
+                                    args.args.items()))
+    print("Trigger event '{0}' {1}".format(args.name, event_arguments))
+
+    results = event_manager.trigger_event(args.name, env, args.args)
+    for result in results:
+        f, res, err = result
+        as_test = 'return ' + repr(res) if res else 'error ' + repr(err)
+        print("Hook {0} {1}".format(f.__name__, as_test))
+    return 0
+
+
+if __name__ == '__main__':
+    sys.exit(main(sys.argv[1:]))

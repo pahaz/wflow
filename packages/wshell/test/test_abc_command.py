@@ -1,6 +1,6 @@
-import unittest
-from wshell.abc_command import AbstractCommand
-from wshell.test import BaseTestCase
+from __future__ import unicode_literals, print_function, generators, division
+from ..test import BaseTestCase
+from ..abc_command import AbstractCommand
 
 
 __author__ = 'pahaz'
@@ -8,42 +8,47 @@ __author__ = 'pahaz'
 
 class TestCommandInterface(BaseTestCase):
     def test_empty_command(self):
-        class Cmd(AbstractCommand):
+        class Command(AbstractCommand):
             pass
 
-        with self.assertRaises(TypeError) as cm:
-            c = Cmd(None, None, None)
+        cm = self.make_command_manager()
+        em = self.make_event_manager()
+        env = self.make_env()
+        with self.assertRaises(TypeError) as e:
+            Command(cm, em, env)
 
-        # print(dir(cm.exception), cm.exception.args)
-        self.assertIn("Can't instantiate abstract class", str(cm.exception))
+        self.assertIn("Can't instantiate abstract class", str(e.exception))
 
     def test_get_name(self):
-        Cmd = self.mock_command_cls('Cmd')
-        self.assertEqual(Cmd.get_name(), 'cmd')
-        Cmd = self.mock_command_cls('CmdCommand')
-        self.assertEqual(Cmd.get_name(), 'cmd')
-        c = Cmd(None, None, None)
-        self.assertEqual(c.get_name(), 'cmd')
-        
-        class SuperCmd(Cmd):
+        Command = self.make_command_cls('Cmd')
+        self.assertEqual(Command.get_name(), 'cmd')
+
+        Command = self.make_command_cls('CmdCommand')
+        self.assertEqual(Command.get_name(), 'cmd')
+
+    def test_override_get_name(self):
+        Command = self.make_command_cls('Cmd')
+
+        class OtherCommand(Command):
             @classmethod
             def get_name(cls):
-                return 'su cmd'
+                return 'other command'
 
-        self.assertEqual(SuperCmd.get_name(), 'su cmd')
-        c = SuperCmd(None, None, None)
-        self.assertEqual(c.get_name(), 'su cmd')
+        self.assertEqual(OtherCommand.get_name(), 'other command')
 
     def test_get_description(self):
-        docs = "Some docs"
-        Cmd = self.mock_command_cls('Cmd', docs)
-        c = Cmd(None, None, None)
-        self.assertEqual(c.get_description(), docs)
+        DESCRIPTION = "Some docs"
+        Command = self.make_command_cls('Cmd', DESCRIPTION)
+        self.assertEqual(Command.get_description(), DESCRIPTION)
 
     def test_get_parser(self):
-        docs = "Some docs"
-        Cmd = self.mock_command_cls('Cmd', docs)
-        c = Cmd(None, None, None)
-
+        DESCRIPTION = "Some docs"
+        Command = self.make_command_cls('Cmd', DESCRIPTION)
+        c = self.make_command(command_cls=Command)
         z = c.get_parser("somesome.py cmd")
-        self.assertEqual(z.description, docs)
+        self.assertEqual(z.description, DESCRIPTION)
+
+    def test_env(self):
+        ENV = self.make_env()
+        c = self.make_command(env=ENV)
+        self.assertEqual(ENV, c.env)
