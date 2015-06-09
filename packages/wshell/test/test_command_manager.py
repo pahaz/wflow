@@ -65,3 +65,38 @@ class TestCommandManager(BaseTestCase):
             cm.add_command(c1)
         with self.assertRaises(ValueError):
             cm.add_command(c2)
+
+    def test_simple_run_command_return_0(self):
+        c1 = self.make_command_cls('test')
+        cm = self.make_command_manager()
+        env = self.make_env()
+        cm.add_command(c1)
+        return_code, error = cm.run_command(['test'], env)
+        self.assertEqual(return_code, 0)
+
+    def test_simple_run_raise_error_command_return_1(self):
+        ERROR = RuntimeError('test')
+
+        def check_raise_error(self_, args):
+            raise ERROR
+
+        c1 = self.make_command_cls('test', take_action=check_raise_error)
+        cm = self.make_command_manager()
+        env = self.make_env()
+        cm.add_command(c1)
+        return_code, error = cm.run_command(['test'], env)
+        self.assertEqual(return_code, 1)
+        self.assertEqual(error, ERROR)
+
+    def test_pop_context(self):
+        def check_env_context(self_, args):
+            env = self_.env
+            self.assertEqual(env['a'], 2)
+            self.assertEqual(env['b'], 1)
+
+        c1 = self.make_command_cls('test', take_action=check_env_context)
+        cm = self.make_command_manager()
+        env = self.make_env({'a': 1})
+        cm.add_command(c1)
+        cm.run_command(['test'], env, {'a': 2, 'b': 1})
+        self.assertEqual(env.as_dict(), {'a': 1})

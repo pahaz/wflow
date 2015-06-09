@@ -45,6 +45,7 @@ class CommandManager(object):
     """
     ERROR_RETURN_CODE = 1
     COMMAND_NOT_FOUND_RETURN_CODE = 2
+    ERROR_ON_MAKE_COMMAND_INSTANCE_RETURN_CODE = 3
 
     log = logging.getLogger(__name__)
 
@@ -122,9 +123,14 @@ class CommandManager(object):
                            .format(argv_string, e, type(e).__name__))
             return self.COMMAND_NOT_FOUND_RETURN_CODE, e
 
-        command = command_factory(
-            self, self._event_manager, env_stack
-        )
+        try:
+            command = command_factory(
+                self, self._event_manager, env_stack
+            )
+        except Exception as e:
+            self.log.error("make command instance '{0}' error: {1} ({2})"
+                           .format(argv_string, e, type(e).__name__))
+            return self.ERROR_ON_MAKE_COMMAND_INSTANCE_RETURN_CODE, e
 
         return_code, error = None, None
 
@@ -144,6 +150,10 @@ class CommandManager(object):
             self._trigger_post_run_command_event(
                 command_name, argv, return_code, error, env_stack
             )
+
+            if env_extra_layer:
+                env_stack.pop()
+
         return return_code, error
 
     def __iter__(self):

@@ -36,9 +36,9 @@ class BaseDockerProjectRunner(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
-        cls.clean_containers()
         info = make_mock_project_info(name='test-runner')
         make_test_image(info)
+        cls.clean_containers()
 
 
 class TestScaleDockerProjectRunner(BaseDockerProjectRunner):

@@ -66,7 +66,6 @@ class AbstractCommand(object):
         self._event_manager = event_manager
         self._env = env
 
-
     # ABSTRACT API FOR COMMANDS
 
     @property

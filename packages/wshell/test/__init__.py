@@ -1,4 +1,4 @@
-from __future__ import print_function, generators, division
+from __future__ import unicode_literals, print_function, generators, division
 import unittest
 
 from wshell.abc_command import AbstractCommand
@@ -11,12 +11,12 @@ __author__ = 'pahaz'
 
 
 class BaseTestCase(unittest.TestCase):
-    def make_command_cls(self, name='C', docs='No'):
-        def take_action(self, args):
+    def make_command_cls(self, name='C', docs='No', take_action=None):
+        def empty_action(self, args):
             pass
 
         z = type(name, (AbstractCommand, ), {
-            'take_action': take_action,
+            'take_action': take_action if take_action else empty_action,
             '__doc__': docs,
         })
 

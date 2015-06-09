@@ -1,16 +1,13 @@
 # coding=utf-8
 import logging
 import os
-import sys
 import subprocess
 
 from wshell.abc_command import AbstractCommand
 from wutil.env_keys import PLATFORM_DATA_PATH_KEY
 from wutil.env_keys import REPO_DIR_NAME_KEY, DNS_NAME_KEY
 from wutil.execute3 import execute
-
 from .parse import parse_git_url, ParseError
-
 
 __author__ = 'pahaz'
 
@@ -26,12 +23,23 @@ def get_git_context(git_url, log):
     return context
 
 
-class GitReceivePackCommand(AbstractCommand):
+class BaseGitCommand(AbstractCommand):
+    log = logging.getLogger(__name__)
+
+    def get_parser(self, run_command):
+        parser = super(BaseGitCommand, self).get_parser(run_command)
+        parser.add_argument('git_url', help="The repository url to sync into.")
+        return parser
+
+    @classmethod
+    def is_hidden_for_command_list(cls):
+        return True
+
+
+class GitReceivePackCommand(BaseGitCommand):
     """
     Receive push into the repository.
     """
-
-    log = logging.getLogger(__name__)
 
     def take_action(self, parsed_args):
         env = self.env
@@ -77,22 +85,11 @@ class GitReceivePackCommand(AbstractCommand):
     def get_name(cls):
         return 'git-receive-pack'
 
-    def get_parser(self, run_command):
-        parser = super(GitReceivePackCommand, self).get_parser(run_command)
-        parser.add_argument('git_url', help="The repository url to sync into.")
-        return parser
 
-    @classmethod
-    def is_hidden_for_command_list(cls):
-        return True
-
-
-class GitUploadPackCommand(AbstractCommand):
+class GitUploadPackCommand(BaseGitCommand):
     """
     Send source from the repository.
     """
-
-    log = logging.getLogger(__name__)
 
     def take_action(self, parsed_args):
         env = self.env
@@ -123,12 +120,3 @@ class GitUploadPackCommand(AbstractCommand):
     @classmethod
     def get_name(cls):
         return 'git-upload-pack'
-
-    def get_parser(self, run_command):
-        p = super(GitUploadPackCommand, self).get_parser(run_command)
-        p.add_argument('repo', help="The repository to sync into.")
-        return p
-
-    @classmethod
-    def is_hidden_for_command_list(cls):
-        return True

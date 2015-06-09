@@ -17,7 +17,7 @@ def _make_print_environ_cmd(env_name):
         .format(env_name)
 
 
-@unittest.skip("long time test!")
+# @unittest.skip("long time test!")
 class TestExecuteFunctions(BaseTestCase):
     def test_execute_return_code(self):
         cmd = '''python -c "print('hi!')"'''
