@@ -16,4 +16,4 @@ docker:
 	sleep 2 # give docker a moment i guess
 
 buildstep:
-	@docker images | grep herokuish || (git clone ${STACK_URL} /tmp/buildstep && cd /tmp/buildstep && make && cd - && rm -rf /tmp/buildstep)
+	@docker images | grep herokuish || (rm -rf /tmp/buildstep && git clone ${STACK_URL} /tmp/buildstep && cd /tmp/buildstep && make && cd - && rm -rf /tmp/buildstep)
