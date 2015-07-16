@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -eo pipefail
 export DEBIAN_FRONTEND=noninteractive
-export REPO="https://github.com/8iq/wflow.git"
+export REPO="https://github.com/pahaz/wflow.git"
 export BRANCH=master
 
 command -v apt-get > /dev/null || (echo "This installation script requires apt-get." && exit 1)
