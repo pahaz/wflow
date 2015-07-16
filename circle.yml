@@ -1,5 +1,7 @@
 test:
   override:
+    - "ssh-add ~/.ssh/id_rsa"
+    - "ssh-add -l"
     - "chmod +x bootstrap.sh"
     - "sudo ./bootstrap.sh"
     - "sudo make test"
