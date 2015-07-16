@@ -9,7 +9,7 @@ command -v apt-get > /dev/null || (echo "This installation script requires apt-g
 apt-get update
 apt-get install make git -y
 
-test -d .build || git clone $REPO .build
+cd /tmp/ && test -d .build || git clone $REPO .build
 cd .build
 
 #git fetch origin
