@@ -1,0 +1,82 @@
+#!/usr/bin/env bash
+set -eo pipefail; [[ $TRACE ]] && set -x
+
+[[ $PLATFORM_NAME ]] || PLATFORM_NAME=wflow
+[[ $PLATFORM_PLUGIN_INSTALLER_COMMAND ]] || PLATFORM_PLUGIN_INSTALLER_COMMAND=wflow-install-plugin
+[[ $PLATFORM_TRIGGER_EVENT_COMMAND ]] || PLATFORM_TRIGGER_EVENT_COMMAND=wflow-trigger-event
+
+[[ $PLATFORM_USERNAME ]] || PLATFORM_USERNAME=wflow
+
+[[ $PLATFORM_DATA_PATH ]] || PLATFORM_DATA_PATH=/home/${PLATFORM_NAME}
+[[ $PLATFORM_PLUGINS_PATH ]] || PLATFORM_PLUGINS_PATH=/var/lib/${PLATFORM_NAME}/plugins
+
+DOKKU_ROOT=${PLATFORM_DATA_PATH}
+
+if ! command -v add-apt-repository > /dev/null; then
+    apt-get install software-properties-common -y
+    [[ `lsb_release -sr` == "12.04" ]] && apt-get install python-software-properties -y
+fi
+
+if ! command -v nginx > /dev/null; then
+    # latest stable NGINX 1.4.x with websocket support
+    add-apt-repository -y ppa:nginx/stable
+    apt-get update
+    apt-get install -o Dpkg::Options::="--force-confdef" -o Dpkg::Options::="--force-confold" --force-yes -qq -y nginx dnsutils
+fi
+
+if ! grep -q ${PLATFORM_USERNAME}-nginx-reload "/etc/sudoers"; then
+  touch /etc/sudoers.tmp
+  BACK_TIME=$(date +"%Y-%m-%d-%H-%M-%S")
+  cp /etc/sudoers /tmp/sudoers.$BACK_TIME
+  echo "%${PLATFORM_USERNAME} ALL=(ALL)NOPASSWD:/etc/init.d/nginx reload # ${PLATFORM_USERNAME}-nginx-reload" >> /tmp/sudoers.$BACK_TIME
+  EDITOR="cp /tmp/sudoers.$BACK_TIME" visudo
+  #rm /tmp/sudoers.new
+fi
+
+cat<<EOF > /etc/nginx/conf.d/${PLATFORM_NAME}.conf
+include $DOKKU_ROOT/*/nginx.conf;
+ssl_session_cache shared:SSL:20m;
+ssl_session_timeout 10m;
+ssl_ciphers EECDH+AES128:RSA+AES128:EECDH+AES256:RSA+AES256:EECDH+3DES:RSA+3DES:!MD5;
+ssl_protocols TLSv1.2 TLSv1.1 TLSv1;
+ssl_prefer_server_ciphers on;
+# ssl_certificate $DOKKU_ROOT/tls/server.crt;
+# ssl_certificate_key $DOKKU_ROOT/tls/server.key;
+EOF
+
+cat<<EOF > /etc/nginx/nginx.conf
+user www-data;
+worker_processes auto;
+pid /run/nginx.pid;
+events {
+  worker_connections 768;
+}
+http {
+  limit_req_zone \$binary_remote_addr zone=flood:10m rate=5r/s;
+  server_tokens off;
+  sendfile on;
+  tcp_nopush on;
+  tcp_nodelay on;
+  keepalive_timeout 65;
+  types_hash_max_size 2048;
+  include /etc/nginx/mime.types;
+  default_type application/octet-stream;
+  access_log /var/log/nginx/access.log;
+  error_log /var/log/nginx/error.log;
+  log_format main '$http_x_forwarded_for - $remote_user [$time_local] "$host" "$request" '
+            '$status $body_bytes_sent "$http_referer" '
+            '"$http_user_agent" $request_time';
+  gzip on;
+  gzip_disable "msie6";
+  include /etc/nginx/conf.d/*.conf;
+  include /etc/nginx/sites-enabled/*;
+}
+EOF
+
+echo 'server_names_hash_bucket_size 512;' >| /etc/nginx/conf.d/server_names_hash_bucket_size.conf
+
+if [[ ! -f  "$PLATFORM_DATA_PATH/NGINX-VHOST" ]]; then
+  echo $(hostname -f) > "$PLATFORM_DATA_PATH/NGINX-VHOST"
+fi
+
+service nginx start
