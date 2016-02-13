@@ -96,10 +96,19 @@ class ExecuteCommandTimeoutExpired(ExecuteCommandBaseExecutionError,
         self.output = output
         self.stdout = None
         self.stderr = None
+        self.encoding = 'utf-8'
 
     def __str__(self):
         return ("Command '{0}' timed out after {1} seconds\n{2}"
                 .format(self.cmd, self.timeout, self.output))
+
+    @property
+    def stdout_text(self):
+        return self.stdout.decode(self.encoding)
+
+    @property
+    def stderr_text(self):
+        return self.stderr.decode(self.encoding)
 
 
 def shlex_split_and_group_by_commands(cmd):
@@ -114,6 +123,8 @@ def shlex_split_and_group_by_commands(cmd):
          {'cmd': ['python'], 'out': None, 'err': None}]
         >>> shlex_split_and_group_by_commands("cat > file.txt")
         [{'cmd': ['cat'], 'out': {'file': 'aaa', 'mode': 'wb'}, 'err': None}]
+        >>> shlex_split_and_group_by_commands(["echo", "test"])
+        [{'cmd': ['echo', 'test'], 'err': None, 'out': None}]
 
     :param cmd: command
     :return: list of commands
@@ -125,7 +136,10 @@ def shlex_split_and_group_by_commands(cmd):
     REDIRECTS = '>', '1>', '2>', '&>', '1>>', '>>', '&>>', '2>>'
     UNEXPECTED_TOKENS = ['&&', '||']
     make_new_command = lambda: {'cmd': [], 'out': None, 'err': None}
-    tokens = shlex.split(cmd)
+    if isinstance(cmd, (list, tuple)):
+        tokens = cmd
+    else:
+        tokens = shlex.split(cmd)
 
     for x in UNEXPECTED_TOKENS:
         if x in tokens:
