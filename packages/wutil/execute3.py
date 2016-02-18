@@ -213,6 +213,7 @@ def base_execute(
         do_on_read_stderr=do_write_stderr,
         do_on_read_pipeline_stderr=do_write_stderr,
         timeout=None,
+        kill_timeout=None,
 ):
     if input and not isinstance(input, types.GeneratorType):
         raise TypeError('input argument must be a generator')
@@ -320,6 +321,17 @@ def base_execute(
         log.info("Finally time: {0} (+{1})"
                  .format(finally_time, finally_time - start_time))
 
+        if kill_timeout is not None:
+            log.info('Killing processes! kill_timeout={0}'
+                     .format(kill_timeout))
+            time.sleep(kill_timeout)
+            for process in processes:
+                process.poll()
+                if process.returncode is None:
+                    log.info("Kill process `{0}`"
+                             .format(process.printable_args))
+                    process.kill()
+
     return [process.returncode for process in processes]
 
 
@@ -363,6 +375,7 @@ def execute(
 
         check_return_code_and_raise_error=True,
         check_all_return_codes_in_pipeline_and_raise_error=True,
+        kill_processes_after_timeout=True,
 ):
     """Execute shell command.
 
@@ -395,13 +408,17 @@ def execute(
                                      use_truncated_buffer_for_pipeline_stderr)
 
     try:
+        kill_timeout = timeout + 1 if timeout and kill_processes_after_timeout\
+            else None
         returncodes = base_execute(
             cmd, input=input, shell=shell, env=env, cwd=cwd,
             stderr_to_stdout=stderr_to_stdout,
             do_on_read_stderr=stderr.do_on_read,
             do_on_read_stdout=stdout.do_on_read,
             do_on_read_pipeline_stderr=pipeline_stderr.do_on_read,
-            timeout=timeout)
+            timeout=timeout,
+            kill_timeout=kill_timeout,
+        )
     except ExecuteCommandTimeoutExpired as err:
         err.set_stdout_stderr_and_update_output(stdout.get_bytes_data(),
                                                 stderr.get_bytes_data())
