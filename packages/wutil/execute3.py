@@ -21,17 +21,26 @@ elif PY2:
 else:
     raise RuntimeError('Unknown python string_types')
 
-__author__ = 'pahaz'
-
-log = logging.getLogger(__name__)
-
 try:
     from subprocess import TimeoutExpired as BaseTimeoutClass  # New in v. 3.3.
 except ImportError:
     BaseTimeoutClass = Exception
 
+__author__ = 'pahaz'
+
+log = logging.getLogger(__name__)
 READER__MAX_READ_SIZE = 2048
 EXECUTE__MAX_BUFFER_SIZE_IF_USE_TRUNCATED_BUFFER = READER__MAX_READ_SIZE * 4
+_index = 0
+_lock = threading.Lock()
+
+
+def _get_uid():
+    global _index
+    with _lock:
+        i = _index
+        _index += 1
+    return i
 
 
 class BaseExecuteCommandError(Exception):
@@ -213,8 +222,10 @@ def base_execute(
     if input and not isinstance(input, types.GeneratorType):
         raise TypeError('input argument must be a generator')
 
+    index = _get_uid()
+
     start_time = time.time()
-    log.info("Start time: {0}".format(start_time))
+    log.info("Start time: %s uid=%s", start_time, index)
 
     opened_fds = []
     processes = []
@@ -243,8 +254,8 @@ def base_execute(
 
         default_out = None
 
-        for command in commands:
-            log.info("Running {0}".format(repr(command)))
+        for i, command in enumerate(commands):
+            log.info("Running p%d %r uid=%s", i, command, index)
             out = _process_out_and_err(command['out'], opened_fds, default_out)
             err = _process_out_and_err(command['err'], opened_fds, default_out)
             args = command['cmd']
@@ -274,58 +285,56 @@ def base_execute(
                                           args=(fd, action, thread_name),
                                           name=thread_name)
                 threads.append(thread)
-                log.info('Starting {0}'.format(thread_name))
+                log.info('Starting %s uid=%s', thread_name, index)
                 thread.start()
             else:
-                log.info('Skip {0}-thread'.format(name))
+                log.info('Skip %s-thread uid=%s', name, index)
 
-        log.info('Waiting command execution')
-        _wait_with_timeout(last_process, timeout, cmd)
+        log.info('Waiting command execution uid=%s', index)
+        _wait_with_timeout(last_process, timeout, cmd, index)
 
     finally:
-        log.info('Polling processes')
-        for process in processes:
+        log.info('Polling processes uid=%s', index)
+        for i, process in enumerate(processes):
             process.poll()
-            log.debug("Process status: `{0}` -> {1}"
-                      .format(process.printable_args, process.returncode))
+            log.debug("Process p%d returncode %r uid=%s",
+                      i, process.returncode, index)
             if process.returncode is None:
-                log.info("Terminating process `{0}`"
-                         .format(process.printable_args))
+                log.info("Terminating process p%d uid=%s", i, index)
                 process.terminate()
-                # may be wait and kill ?
+                # wait and kill !
 
-        log.info('Closing process in/out/err descriptors')
-        for process in processes:
+        if kill_timeout is not None:
+            log.warning('Killing processes! kill_timeout=%s uid=%s',
+                        kill_timeout, index)
+            time.sleep(kill_timeout)
+            for i, process in enumerate(processes):
+                process.poll()
+                if process.returncode is None:
+                    log.info("Kill process p%d uid=%s", i, index)
+                    process.kill()
+
+        log.info('Closing process in/out/err descriptors uid=%s', index)
+        for i, process in enumerate(processes):
             for fd_name, fd in (('in', process.stdin), ('out', process.stdout),
                                 ('err', process.stderr)):
                 if fd and not fd.closed:
-                    log.info("Close {0} for `{1}`"
-                             .format(fd_name, process.printable_args))
-                    _safe_close(fd)
+                    log.info('Close %s for p%d uid=%s', fd_name, i, index)
+                    _safe_close(fd, index)
 
-        log.info('Closing descriptors')
+        log.info('Closing descriptors uid=%s', index)
         for fd in opened_fds:
-            _safe_close(fd)
+            _safe_close(fd, index)
 
         for thread in threads:
             status = "alive" if thread.is_alive() else "stopped"
-            log.debug("Waiting thread {0} - {1}".format(thread.name, status))
+            log.debug("Waiting thread %s %s uid=%s", status,
+                      thread.name, index)
             thread.join()
 
         finally_time = time.time()
-        log.info("Finally time: {0} (+{1})"
-                 .format(finally_time, finally_time - start_time))
-
-        if kill_timeout is not None:
-            log.warning('Killing processes! kill_timeout={0}'
-                        .format(kill_timeout))
-            time.sleep(kill_timeout)
-            for process in processes:
-                process.poll()
-                if process.returncode is None:
-                    log.info("Kill process `{0}`"
-                             .format(process.printable_args))
-                    process.kill()
+        log.info("Finally time: %s (+%s) uid=%s",
+                 finally_time, finally_time - start_time, index)
 
     return [process.returncode for process in processes]
 
@@ -497,9 +506,8 @@ def _repr_bytes(x):
 def _printable_args(args):
     if isinstance(args, string_types):
         return args
-    args = [("\"{0}\"".format(x) if ' ' in x else x) for x in args]
-    res = ' '.join(args)
-    return res
+    args = [(repr(x) if ' ' in x else x) for x in args]
+    return repr(' '.join(args))[1:-1]
 
 
 class _ReaderWrapper(object):
@@ -584,25 +592,25 @@ def _process_out_and_err(fd, opened_fds, default_fd):
     return fd
 
 
-def _safe_close(x):
+def _safe_close(x, index):
     try:
         x.close()
     except Exception as e:
-        log.exception("Exception while close fd: ".format(str(e)))
+        log.exception("Exception while close fd: %r uid=%s", e, index)
 
 
-def _wait_with_timeout(last_process, timeout, cmd):
+def _wait_with_timeout(last_process, timeout, cmd, index):
     if sys.version_info[:2] < (3, 3):
         start = time.time()
         while last_process.returncode is None:
             last_process.poll()
             now = time.time()
             if timeout and now - start > timeout:
-                log.warning('TIMEOUT')
+                log.warning('TIMEOUT uid=%s', index)
                 raise ExecuteCommandTimeoutExpired(cmd, timeout)
     else:
         try:
             last_process.wait(timeout=timeout)
         except subprocess.TimeoutExpired as e:
-            log.warning('TIMEOUT')
+            log.warning('TIMEOUT uid=%s', index)
             raise ExecuteCommandTimeoutExpired(e.cmd, e.timeout)
