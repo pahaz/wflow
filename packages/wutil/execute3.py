@@ -24,11 +24,6 @@ else:
 __author__ = 'pahaz'
 
 log = logging.getLogger(__name__)
-h = logging.StreamHandler()
-h.setFormatter(logging.Formatter("[%(asctime)s] %(levelname)s: %(message)s "
-                                 "(line %(lineno)d)"))
-log.addHandler(h)
-log.setLevel(logging.WARNING)
 
 try:
     from subprocess import TimeoutExpired as BaseTimeoutClass  # New in v. 3.3.
@@ -249,7 +244,7 @@ def base_execute(
         default_out = None
 
         for command in commands:
-            log.info("Running {0}".format(command))
+            log.info("Running {0}".format(repr(command)))
             out = _process_out_and_err(command['out'], opened_fds, default_out)
             err = _process_out_and_err(command['err'], opened_fds, default_out)
             args = command['cmd']
@@ -322,8 +317,8 @@ def base_execute(
                  .format(finally_time, finally_time - start_time))
 
         if kill_timeout is not None:
-            log.info('Killing processes! kill_timeout={0}'
-                     .format(kill_timeout))
+            log.warning('Killing processes! kill_timeout={0}'
+                        .format(kill_timeout))
             time.sleep(kill_timeout)
             for process in processes:
                 process.poll()
@@ -408,8 +403,7 @@ def execute(
                                      use_truncated_buffer_for_pipeline_stderr)
 
     try:
-        kill_timeout = timeout + 1 if timeout and kill_processes_after_timeout\
-            else None
+        kill_timeout = 1 if timeout and kill_processes_after_timeout else None
         returncodes = base_execute(
             cmd, input=input, shell=shell, env=env, cwd=cwd,
             stderr_to_stdout=stderr_to_stdout,
@@ -504,7 +498,8 @@ def _printable_args(args):
     if isinstance(args, string_types):
         return args
     args = [("\"{0}\"".format(x) if ' ' in x else x) for x in args]
-    return ' '.join(args)
+    res = ' '.join(args)
+    return res
 
 
 class _ReaderWrapper(object):
