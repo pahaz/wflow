@@ -1,3 +1,6 @@
+language: python
+python:
+ - "3.4"
 script:
 #   - "wget -qO- https://raw.github.com/8iq/wflow/bootstrap.sh | sudo bash"
   - "chmod +x bootstrap.sh"
